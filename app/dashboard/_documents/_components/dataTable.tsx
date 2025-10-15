@@ -45,8 +45,11 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
   const currentData = data.slice(startIndex, endIndex);
 
   // Helper function to truncate filename
-  const truncateFileName = (fileName: string | undefined, maxLength: number = 20) => {
-    if (!fileName) return 'Unnamed file';
+  const truncateFileName = (
+    fileName: string | undefined,
+    maxLength: number = 20
+  ) => {
+    if (!fileName) return "Unnamed file";
     if (fileName.length <= maxLength) return fileName;
     return fileName.substring(0, maxLength) + "...";
   };
@@ -106,11 +109,11 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
                           </span>
                         }
                         title="Full Filename"
-                        description={row.fileName || 'Unnamed file'}
+                        description={row.fileName || "Unnamed file"}
                       />
                     ) : (
                       <span className="text-sm font-medium text-gray-900">
-                        {row.fileName || 'Unnamed file'}
+                        {row.fileName || "Unnamed file"}
                       </span>
                     )}
                     <span className="text-sm text-gray-600">{row.status}</span>
@@ -134,7 +137,10 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
               <TableCell className="px-6 py-4 p-4">
                 <div className="flex items-center gap-1 flex-wrap">
                   {row.tags.slice(0, 2).map((tag, tagIndex) => (
-                    <TagBadge key={`${row.id || index}-tag-${tagIndex}-${tag.label}`} color={tag.color}>
+                    <TagBadge
+                      key={`${row.id || index}-tag-${tagIndex}-${tag.label}`}
+                      color={tag.color}
+                    >
                       {tag.label}
                     </TagBadge>
                   ))}
@@ -152,7 +158,12 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
                       description={
                         <div className="flex flex-wrap gap-1 mt-2">
                           {row.tags.map((tag, tagIndex) => (
-                            <TagBadge key={`${row.id || index}-all-tag-${tagIndex}-${tag.label}`} color={tag.color}>
+                            <TagBadge
+                              key={`${row.id || index}-all-tag-${tagIndex}-${
+                                tag.label
+                              }`}
+                              color={tag.color}
+                            >
                               {tag.label}
                             </TagBadge>
                           ))}
@@ -181,7 +192,9 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
               <TableCell className="px-4 py-4 p-4">
                 <ActionButtons
                   fileName={row.fileName}
-                  onDelete={onDelete ? () => onDelete(row.id, row.fileName) : undefined}
+                  onDelete={
+                    onDelete ? () => onDelete(row.id, row.fileName) : undefined
+                  }
                 />
               </TableCell>
             </TableRow>

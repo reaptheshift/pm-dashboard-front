@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UploadDocumentModalOptimized as UploadDocumentModal } from "./uploadDocumentModal/uploadDocumentModalOptimized";
+import { UploadDocumentModalOptimized as UploadDocumentModal } from "../../_components/uploadDocumentModal/uploadDocumentModalOptimized";
 
 interface UploadDocumentModalWrapperProps {
   children: React.ReactNode;

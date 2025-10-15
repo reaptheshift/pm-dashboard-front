@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { DataTable } from "../dataTable";
-import { UploadDocumentModalWrapper } from "../uploadDocumentModalWrapper";
-import { DashboardSkeleton } from "../dashboardSkeleton";
+import { DataTable } from "./_components/dataTable";
+import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
+import { DashboardSkeleton } from "../_components/dashboardSkeleton";
 import { backendAPI, Document } from "@/lib/backend-api";
 
 export function DocumentsContent() {

@@ -1,4 +1,4 @@
-import { TableRowData } from "@/app/dashboard/_components/dataTable";
+import { TableRowData } from "@/app/dashboard/_documents/_components/dataTable";
 
 export const sampleTableData: TableRowData[] = [
   {

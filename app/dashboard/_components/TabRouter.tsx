@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useHash } from "@/hooks/useHash";
-import { DocumentsContent } from "./_documents/DocumentsContent";
-import { ProjectsContent } from "./_projects/ProjectsContent";
+import { DocumentsContent } from "../_documents/DocumentsContent";
+import { ProjectsContent } from "../_projects/ProjectsContent";
+import { UserContent } from "../_users/UserContent";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -27,7 +28,7 @@ export function TabRouter() {
     case "#Projects":
       return <ProjectsContent />;
     case "#Users":
-      return <Placeholder title="Users" />;
+      return <UserContent />;
     case "#Integrations":
       return <Placeholder title="Integrations" />;
     case "#AI":
