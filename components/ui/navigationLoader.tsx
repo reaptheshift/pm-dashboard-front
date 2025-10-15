@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { PageLoader } from "@/components/pageLoader";
+
 
 export function NavigationLoader() {
   const [isLoading, setIsLoading] = React.useState(false);

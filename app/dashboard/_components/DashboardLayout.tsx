@@ -1,12 +1,12 @@
 import * as React from "react";
 import Image from "next/image";
-import { User } from "@/lib/auth";
+import { ServerUser } from "@/lib/auth-server";
 import { LogoutButton } from "./LogoutButton";
 import { SidebarNav } from "./SidebarNav";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  user: User;
+  user: ServerUser;
 }
 
 export function DashboardLayout({ children, user }: DashboardLayoutProps) {

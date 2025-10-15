@@ -17,84 +17,122 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Eye, EyeOff } from "lucide-react";
+import { Edit, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
-interface UserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (data: UserFormData) => void;
-}
-
-interface UserFormData {
-  fullName: string;
+interface User {
+  id: string;
+  name: string;
   email: string;
+  avatar?: string;
   role: string;
-  password: string;
-  confirmPassword: string;
+  status: "Active" | "Inactive" | "Invited";
+  projects: Array<{
+    id: string;
+    name: string;
+  }>;
+  lastLogin: string;
+  joinedDate: string;
 }
 
-export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
-  const [formData, setFormData] = React.useState<UserFormData>({
-    fullName: "",
-    email: "",
-    role: "field_worker",
+interface EditUserDialogProps {
+  user: User;
+  onUpdate: (userId: string, data: UpdateUserData) => Promise<void>;
+}
+
+interface UpdateUserData {
+  name?: string;
+  email?: string;
+  role?: string;
+  password?: string;
+}
+
+export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
+  const [open, setOpen] = React.useState(false);
+  const [formData, setFormData] = React.useState({
+    name: user.name,
+    email: user.email,
+    role: user.role,
     password: "",
-    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = React.useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
+    try {
+      setIsLoading(true);
 
-    onSubmit(formData);
-    // Reset form
-    setFormData({
-      fullName: "",
-      email: "",
-      role: "field_worker",
-      password: "",
-      confirmPassword: "",
-    });
-    onOpenChange(false);
+      // Only send fields that have changed
+      const updateData: UpdateUserData = {};
+
+      if (formData.name !== user.name) {
+        updateData.name = formData.name;
+      }
+
+      if (formData.email !== user.email) {
+        updateData.email = formData.email;
+      }
+
+      if (formData.role !== user.role) {
+        updateData.role = formData.role;
+      }
+
+      if (formData.password) {
+        updateData.password = formData.password;
+      }
+
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await onUpdate(user.id, updateData);
+        toast.success("User updated successfully");
+        setOpen(false);
+        setFormData({ ...formData, password: "" }); // Clear password field
+      } else {
+        toast.info("No changes to update");
+      }
+    } catch (error: any) {
+      toast.error("Failed to update user", {
+        description: error.message || "There was an error updating the user",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleClose = () => {
-    // Reset form on close
-    setFormData({
-      fullName: "",
-      email: "",
-      role: "field_worker",
-      password: "",
-      confirmPassword: "",
-    });
-    onOpenChange(false);
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      // Reset form when closing
+      setFormData({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        password: "",
+      });
+      setShowPassword(false);
+    }
+    setOpen(newOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[512px] max-h-[80vh] p-0 gap-0 flex flex-col"
-        aria-describedby="create-user-dialog-description"
-      >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Edit className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] max-h-[80vh] p-0 gap-0 flex flex-col">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-0">
           <div className="space-y-1">
             <DialogTitle className="text-lg font-semibold text-gray-900">
-              Create User
+              Edit User
             </DialogTitle>
-            <DialogDescription
-              id="create-user-dialog-description"
-              className="text-sm text-gray-600"
-            >
-              Add a new user to your organization.
+            <DialogDescription className="text-sm text-gray-600">
+              Update user information below
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -104,39 +142,39 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
           onSubmit={handleSubmit}
           className="px-6 py-6 space-y-5 overflow-y-auto flex-1"
         >
-          {/* Full Name */}
+          {/* Name */}
           <div className="space-y-2">
             <label
-              htmlFor="fullName"
+              htmlFor="edit-name"
               className="block text-sm font-medium text-gray-700"
             >
-              Full name
+              Name
             </label>
             <Input
-              id="fullName"
+              id="edit-name"
               type="text"
               placeholder="Enter name"
-              value={formData.fullName}
+              value={formData.name}
               onChange={(e) =>
-                setFormData({ ...formData, fullName: e.target.value })
+                setFormData({ ...formData, name: e.target.value })
               }
               className="w-full"
               required
             />
           </div>
 
-          {/* Email Address */}
+          {/* Email */}
           <div className="space-y-2">
             <label
-              htmlFor="email"
+              htmlFor="edit-email"
               className="block text-sm font-medium text-gray-700"
             >
-              E-mail address
+              Email
             </label>
             <Input
-              id="email"
+              id="edit-email"
               type="email"
-              placeholder="Enter e-mail address"
+              placeholder="Enter email"
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
@@ -149,22 +187,21 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
           {/* Password */}
           <div className="space-y-2">
             <label
-              htmlFor="password"
+              htmlFor="edit-password"
               className="block text-sm font-medium text-gray-700"
             >
-              Password
+              Password (optional)
             </label>
             <div className="relative">
               <Input
-                id="password"
+                id="edit-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter password"
+                placeholder="Enter new password"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
                 className="w-full pr-10"
-                required
               />
               <Button
                 type="button"
@@ -182,46 +219,10 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
             </div>
           </div>
 
-          {/* Confirm Password */}
-          <div className="space-y-2">
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Confirm Password
-            </label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm password"
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                }
-                className="w-full pr-10"
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </Button>
-            </div>
-          </div>
-
           {/* Role */}
           <div className="space-y-2">
             <label
-              htmlFor="role"
+              htmlFor="edit-role"
               className="block text-sm font-medium text-gray-700"
             >
               Role
@@ -244,15 +245,20 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
 
         {/* Footer */}
         <DialogFooter className="flex justify-end gap-3 px-6 pb-6">
-          <Button variant="outline" onClick={handleClose} type="button">
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            type="button"
+          >
             Cancel
           </Button>
           <Button
             type="submit"
+            disabled={isLoading}
             className="bg-gray-900 text-white hover:bg-gray-800"
             onClick={handleSubmit}
           >
-            Create User
+            {isLoading ? "Updating..." : "Update"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -260,4 +266,4 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
   );
 }
 
-export default UserDialog;
+export default EditUserDialog;

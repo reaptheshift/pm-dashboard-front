@@ -27,6 +27,12 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Handle hydration mismatch by ensuring client-side rendering
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   function handleChange<K extends keyof LoginFormValues>(
     key: K,
@@ -58,6 +64,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
           value={values.email}
           onChange={(e) => handleChange("email", e.target.value)}
           placeholder="you@company.com"
+          suppressHydrationWarning
         />
       </div>
 
@@ -73,6 +80,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
             onChange={(e) => handleChange("password", e.target.value)}
             placeholder="••••••••"
             className="pr-10"
+            suppressHydrationWarning
           />
           <button
             type="button"
@@ -96,6 +104,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
             onCheckedChange={(checked) =>
               handleChange("remember", Boolean(checked))
             }
+            suppressHydrationWarning
           />
           <span>Remember me</span>
         </label>

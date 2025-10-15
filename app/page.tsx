@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { checkAuth } from "@/lib/auth";
+import { authService } from "@/lib/auth-client";
 
 export default function HomePage() {
   const router = useRouter();
@@ -10,8 +10,8 @@ export default function HomePage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        const authResult = await checkAuth();
-        
+        const authResult = await authService.checkAuth();
+
         if (authResult.success && authResult.user) {
           // User is authenticated, redirect to dashboard
           router.push("/dashboard");
@@ -20,7 +20,6 @@ export default function HomePage() {
           router.push("/login");
         }
       } catch (error) {
-        console.error("Auth check failed:", error);
         router.push("/login");
       }
     };

@@ -21,6 +21,16 @@ function Placeholder({ title }: { title: string }) {
 
 export function TabRouter() {
   const { hash } = useHash("#Documents");
+  const [isHydrated, setIsHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  // Show default content until hydrated to prevent hydration mismatch
+  if (!isHydrated) {
+    return <DocumentsContent />;
+  }
 
   switch (hash) {
     case "#Dashboard":

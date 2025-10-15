@@ -26,11 +26,17 @@ const LINKS = [
 
 export function SidebarNav() {
   const { hash, setHash } = useHash("#Documents");
+  const [isHydrated, setIsHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   return (
     <nav className="flex-1 p-4">
       <div className="space-y-1">
         {LINKS.map((link) => {
-          const isActive = hash === link.hash;
+          const isActive = isHydrated ? hash === link.hash : false;
           const base =
             "flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors text-sm";
           const active = "text-white bg-gray-900 hover:bg-gray-800";

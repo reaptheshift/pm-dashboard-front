@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Edit, Trash2, Users, Plus } from "lucide-react";
+import { EditUserDialog } from "./EditUserDialog";
 
 interface User {
   id: string;
@@ -38,6 +39,7 @@ interface UsersTableProps {
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
   onCreateUser?: () => void;
+  onUpdate?: (userId: string, data: any) => Promise<void>;
 }
 
 export function UsersTable({
@@ -45,15 +47,35 @@ export function UsersTable({
   onEdit,
   onDelete,
   onCreateUser,
+  onUpdate,
 }: UsersTableProps) {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "PM":
-        return "bg-green-50 text-green-700 border-green-200";
-      case "Field Worker":
+      case "project_manager":
         return "bg-blue-50 text-blue-700 border-blue-200";
+      case "field_worker":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "admin":
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      case "manager":
+        return "bg-orange-50 text-orange-700 border-orange-200";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
+    }
+  };
+
+  const formatRoleDisplay = (role: string) => {
+    switch (role) {
+      case "project_manager":
+        return "Project Manager";
+      case "field_worker":
+        return "Field Worker";
+      case "admin":
+        return "Admin";
+      case "manager":
+        return "Manager";
+      default:
+        return role;
     }
   };
 
@@ -132,7 +154,7 @@ export function UsersTable({
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <Badge className={getRoleBadgeColor(user.role)}>
-                      {user.role}
+                      {formatRoleDisplay(user.role)}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
@@ -195,14 +217,18 @@ export function UsersTable({
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit?.(user)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {onUpdate ? (
+                        <EditUserDialog user={user} onUpdate={onUpdate} />
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit?.(user)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

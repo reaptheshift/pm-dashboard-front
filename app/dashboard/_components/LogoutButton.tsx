@@ -1,17 +1,20 @@
 "use client";
 
-import { logout } from "../_actions";
+import { logout } from "@/app/login/_actions";
 import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 
 export function LogoutButton() {
   async function handleLogout() {
     try {
-      // Call server action to clear cookies and redirect
+      // Use server action for logout
       await logout();
-    } catch (error) {
-      // Only show error if it's not a redirect error
-      if (error instanceof Error && !error.message.includes("NEXT_REDIRECT")) {
+
+      // This line won't be reached because redirect() throws
+      toast.success("Successfully logged out");
+    } catch (error: any) {
+      // Only show error if it's not a redirect
+      if (error.message !== "NEXT_REDIRECT") {
         console.error("Logout error:", error);
         toast.error("Logout failed", {
           description: "There was an error logging out. Please try again.",
