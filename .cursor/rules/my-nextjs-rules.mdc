@@ -1,0 +1,417 @@
+---
+alwaysApply: true
+---
+
+---
+
+description:
+globs:
+alwaysApply: true
+
+---
+
+# Pocketboss Project Rules
+
+## Project Overview
+
+PocketBoss Project Management dashboard is a place where project managers can add/edit/remove construction project documents that will be subjugated to RAG.
+
+## Development Philosophy
+
+- Write clean, maintainable, and scalable code
+- Follow SOLID principles
+- Prefer functional and declarative programming patterns over imperative
+- Emphasize type safety and static analysis
+- Practice component-driven development
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure files: exported component, subcomponents, helpers, static content, types
+- Add comprehensive comments for complex logic
+- Implement proper error handling and logging
+
+## Technology Stack Preferences
+
+- **Frontend**: React with TypeScript, Next.js App Router for SSR/SSG
+- **UI Components**: Shadcn UI, Radix UI primitives
+- **Styling**: Tailwind CSS with mobile-first responsive design
+- **State Management**: Redux Toolkit for global state, nuqs for URL search parameters, Context API for shared state
+- **Validation**: Zod for schema validation
+- **Forms**: React Hook Form
+- **Backend**: Node.js with Express or Fastify, or Python with FastAPI
+- **Database**: PostgreSQL for relational data, Redis for caching
+- **Authentication**: JWT tokens with refresh token rotation
+- **Real-time**: WebSockets or Server-Sent Events
+- **Testing**: Jest, React Testing Library, Playwright for E2E
+- **Internationalization**: next-i18next
+- **Deployment**: Docker containers, CI/CD with GitHub Actions
+
+## Code Implementation Guidelines
+
+### Planning Phase
+
+- Begin with step-by-step planning
+- Write detailed pseudocode before implementation
+- Document component architecture and data flow
+- Consider edge cases and error scenarios
+
+### Code Style
+
+- Use tabs for indentation
+- Use single quotes for strings (except to avoid escaping)
+- Omit semicolons (unless required for disambiguation)
+- Eliminate unused variables
+- Add space after keywords
+- Add space before function declaration parentheses
+- Always use strict equality (===) instead of loose equality (==)
+- Space infix operators
+- Add space after commas
+- Keep else statements on the same line as closing curly braces
+- Use curly braces for multi-line if statements
+- Always handle error parameters in callbacks
+- Limit line length to 80 characters
+- Use trailing commas in multiline object/array literals
+- Use the "function" keyword for pure functions
+- Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements
+- Use declarative JSX
+
+### Naming Conventions
+
+#### General Rules
+
+- Use PascalCase for:
+  - Components
+  - Type definitions
+  - Interfaces
+- Use kebab-case for:
+  - Directory names (e.g., components/auth-wizard)
+  - File names (e.g., user-profile.tsx)
+- Use camelCase for:
+  - Variables
+  - Functions
+  - Methods
+  - Hooks
+  - Properties
+  - Props
+- Use UPPERCASE for:
+  - Environment variables
+  - Constants
+  - Global configurations
+
+#### Specific Naming Patterns
+
+- Prefix event handlers with 'handle': handleClick, handleSubmit
+- Prefix boolean variables with verbs: isLoading, hasError, canSubmit
+- Prefix custom hooks with 'use': useAuth, useForm
+- Use complete words over abbreviations except for:
+  - err (error)
+  - req (request)
+  - res (response)
+  - props (properties)
+  - ref (reference)
+- Favor named exports for components
+
+## TypeScript Implementation
+
+- Enable strict mode
+- Use TypeScript for all code; prefer interfaces over types
+- Define clear interfaces for component props, state, and Redux state structure
+- Use type guards to handle potential undefined or null values safely
+- Apply generics to functions, actions, and slices where type flexibility is needed
+- Utilize TypeScript utility types (Partial, Pick, Omit) for cleaner and reusable code
+- Prefer interface over type for defining object structures, especially when extending
+- Use mapped types for creating variations of existing types dynamically
+- Avoid `any` type - use proper typing or `unknown`
+- Avoid enums; use maps instead
+- Use functional components with TypeScript interfaces
+- Implement proper generic types for reusable components
+
+## React Best Practices
+
+### Component Architecture
+
+- Use functional components with TypeScript interfaces
+- Define components using the function keyword
+- Extract reusable logic into custom hooks
+- Implement proper component composition
+- Use React.memo() strategically for performance
+- Implement proper cleanup in useEffect hooks
+- Minimize 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC)
+- Wrap client components in Suspense with fallback
+- Use dynamic loading for non-critical components
+- Implement proper loading states and error boundaries
+- Follow the single responsibility principle for components
+- Use declarative JSX
+
+### React Performance Optimization
+
+- Use useCallback for memoizing callback functions
+- Implement useMemo for expensive computations
+- Avoid inline function definitions in JSX
+- Implement code splitting using dynamic imports
+- Implement proper key props in lists (avoid using index as key)
+
+## Next.js Best Practices
+
+### Core Concepts
+
+- Utilize App Router for routing
+- Implement proper metadata management
+- Use proper caching strategies
+- Implement proper error boundaries
+- Follow Next.js docs for Data Fetching, Rendering, and Routing
+
+### Components and Features
+
+- Use Next.js built-in components:
+  - Image component for optimized images
+  - Link component for client-side navigation
+  - Script component for external scripts
+  - Head component for metadata
+- Implement proper loading states
+- Use proper data fetching methods
+
+### Server Components
+
+- Default to Server Components
+- Use URL query parameters for data fetching and server state management
+- Use 'use client' directive only when necessary:
+  - Event listeners
+  - Browser APIs
+  - State management
+  - Client-side-only libraries
+
+## State Management
+
+### Local State
+
+- Use useState for component-level state
+- Implement useReducer for complex state
+- Use useContext for shared state
+- Implement proper state initialization
+
+### Global State
+
+- Use Redux Toolkit for global state
+- Use createSlice to define state, reducers, and actions together
+- Avoid using createReducer and createAction unless necessary
+- Normalize state structure to avoid deeply nested data
+- Use selectors to encapsulate state access
+- Avoid large, all-encompassing slices; separate concerns by feature
+- Use 'nuqs' for URL search parameter state management
+
+## UI and Styling
+
+### Component Libraries
+
+- Use Shadcn UI for consistent, accessible component design
+- Integrate Radix UI primitives for customizable, accessible UI elements
+- Apply composition patterns to create modular, reusable components
+
+### Styling Guidelines
+
+- Use Tailwind CSS for utility-first, maintainable styling
+- Design with mobile-first, responsive principles for flexibility across devices
+- Implement dark mode using CSS variables or Tailwind's dark mode features
+- Ensure color contrast ratios meet accessibility standards for readability
+- Maintain consistent spacing values to establish visual harmony
+- Define CSS variables for theme colors and spacing to support easy theming and maintainability
+
+## Error Handling and Validation
+
+### Form Validation
+
+- Use Zod for schema validation
+- Implement proper error messages
+- Use proper form libraries (e.g., React Hook Form)
+
+### Error Boundaries
+
+- Use error boundaries to catch and handle errors in React component trees gracefully
+- Log caught errors to an external service (e.g., Sentry) for tracking and debugging
+- Design user-friendly fallback UIs to display when errors occur, keeping users informed without breaking the app
+
+## Performance Guidelines
+
+- Minimize 'use client' usage:
+  - Favor server components and Next.js SSR
+  - Use only for Web API access in small components
+  - Avoid for data fetching or state management
+- Optimize Web Vitals (LCP, CLS, FID)
+- Implement lazy loading for components and routes
+- Use image optimization: WebP format, include size data, implement lazy loading
+- Use dynamic loading for non-critical components
+- Implement proper caching strategies
+- Use database query optimization
+- Implement pagination for large datasets
+- Use compression for API responses
+
+## Testing
+
+### Unit Testing
+
+- Write thorough unit tests to validate individual functions and components
+- Use Jest and React Testing Library for reliable and efficient testing of React components
+- Follow patterns like Arrange-Act-Assert to ensure clarity and consistency in tests
+- Mock external dependencies and API calls to isolate unit tests
+- Write unit tests for utility functions and business logic
+- Maintain at least 80% code coverage
+- Use test-driven development (TDD) when appropriate
+
+### Integration Testing
+
+- Focus on user workflows to ensure app functionality
+- Set up and tear down test environments properly to maintain test independence
+- Use snapshot testing selectively to catch unintended UI changes without over-relying on it
+- Leverage testing utilities (e.g., screen in RTL) for cleaner and more readable tests
+- Write integration tests for API endpoints
+- Write component tests for React components
+- Write E2E tests for critical user flows
+
+## Accessibility (a11y)
+
+### Core Requirements
+
+- Use semantic HTML for meaningful structure
+- Apply accurate ARIA attributes where needed
+- Ensure full keyboard navigation support
+- Manage focus order and visibility effectively
+- Maintain accessible color contrast ratios
+- Follow a logical heading hierarchy
+- Make all interactive elements accessible
+- Provide clear and accessible error feedback
+- Follow WCAG 2.1 guidelines
+- Test with screen readers
+
+## Security Guidelines
+
+- Implement proper input validation and sanitization
+- Use HTTPS everywhere
+- Implement CSRF protection
+- Sanitize user-generated content
+- Use environment variables for sensitive configuration
+- Implement proper password hashing (bcrypt)
+- Add rate limiting for authentication endpoints
+- Implement proper session management
+- Implement input sanitization to prevent XSS attacks
+- Use DOMPurify for sanitizing HTML content
+- Use proper authentication methods
+
+## Internationalization (i18n)
+
+- Use next-i18next for translations
+- Implement proper locale detection
+- Use proper number and date formatting
+- Implement proper RTL support
+- Use proper currency formatting
+
+## API Design
+
+- Use RESTful API conventions
+- Implement proper HTTP status codes
+- Use consistent response formats
+- Implement rate limiting and request validation
+- Add comprehensive API documentation (OpenAPI/Swagger)
+
+## Database Design
+
+- Use proper normalization for relational data
+- Implement database migrations
+- Use indexes for performance optimization
+- Implement soft deletes for user-generated content
+- Use transactions for data consistency
+
+## File Organization
+
+```
+src/
+├── components/          # Reusable UI components (Shadcn UI)
+├── app/                # Next.js App Router pages and layouts
+├── hooks/              # Custom React hooks
+├── services/           # API services and external integrations
+├── utils/              # Utility functions
+├── types/              # TypeScript interfaces and type definitions
+├── constants/          # Application constants (use maps instead of enums)
+├── contexts/           # React contexts for global state
+├── store/              # Redux store and slices
+├── lib/                # Configuration and utilities (nuqs, etc.)
+├── styles/             # Global styles and Tailwind configuration
+└── locales/            # Internationalization files
+```
+
+## Git Workflow
+
+- Use conventional commit messages
+- Create feature branches for new features
+- Use pull requests for code review
+- Keep commits atomic and focused
+- Write descriptive commit messages
+
+## Documentation
+
+- Use JSDoc for documentation
+- Document all public functions, classes, methods, and interfaces
+- Add examples when appropriate
+- Use complete sentences with proper punctuation
+- Keep descriptions clear and concise
+- Use proper markdown formatting
+- Use proper code blocks
+- Use proper links
+- Use proper headings
+- Use proper lists
+- Maintain README with setup instructions
+- Document API endpoints
+- Add inline code documentation
+- Keep architecture decisions documented
+- Update documentation with code changes
+
+## Social Media Specific Features
+
+- User profiles and authentication
+- Content creation and sharing
+- Real-time notifications
+- Social interactions (likes, comments, shares)
+- Privacy controls and content moderation
+- Search and discovery features
+- Mobile-responsive design
+
+## Code Review Checklist
+
+- [ ] Code follows project conventions
+- [ ] Proper error handling implemented
+- [ ] Tests written and passing
+- [ ] Performance considerations addressed
+- [ ] Security best practices followed
+- [ ] Accessibility requirements met
+- [ ] Documentation updated
+- [ ] No console.log statements in production code
+- [ ] TypeScript types properly defined
+- [ ] Components follow naming conventions
+- [ ] Proper state management implementation
+- [ ] Form validation implemented
+- [ ] Internationalization support added
+
+## Environment Setup
+
+- Use Node.js LTS version
+- Use npm or yarn for package management
+- Use ESLint and Prettier for code formatting
+- Use Husky for git hooks
+- Use dotenv for environment variables
+
+## Key Conventions Summary
+
+- Use 'nuqs' for URL search parameter state management
+- Optimize Web Vitals (LCP, CLS, FID)
+- Limit 'use client':
+  - Favor server components and Next.js SSR
+  - Use only for Web API access in small components
+  - Avoid for data fetching or state management
+- Follow Next.js docs for Data Fetching, Rendering, and Routing
+- Use Redux Toolkit for complex global state management
+- Implement Zod for schema validation
+- Use React Hook Form for form handling
+- Follow mobile-first responsive design principles
+
+Remember: Always prioritize user experience, security, and performance in all development decisions.

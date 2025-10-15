@@ -1,0 +1,46 @@
+{
+  "name": "pocketboss-admin",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev --turbo -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 20",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "dev:aws": "next dev --turbo",
+    "dev:remote": "next dev --turbo",
+    "dev:local": "next dev --turbo"
+  },
+  "dependencies": {
+    "@radix-ui/react-checkbox": "1.0.4",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "2.0.2",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@xano/js-sdk": "^2.0.1",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.446.0",
+    "next": "^15.5.0",
+    "next-themes": "^0.4.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^2.5.2",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.5.2",
+    "@types/react": "19.1.13",
+    "autoprefixer": "10.4.19",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.10",
+    "typescript": "5.5.4"
+  }
+}

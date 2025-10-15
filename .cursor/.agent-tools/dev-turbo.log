@@ -1,0 +1,42 @@
+
+> pocketboss-admin@0.1.0 dev
+> next dev --turbo -p 3000 -p 3001
+
+   ▲ Next.js 15.5.0 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.102:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 769ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1599ms
+ GET / 200 in 1815ms
+ ✓ Compiled /dashboard in 428ms
+ GET /dashboard 200 in 507ms
+ ✓ Compiled in 58ms
+ ✓ Compiled in 48ms
+ ✓ Compiled in 113ms
+ GET /dashboard 200 in 540ms
+ GET /dashboard 200 in 121ms
+ GET /dashboard 200 in 148ms
+ ✓ Compiled in 70ms
+ GET /dashboard 200 in 300ms
+ GET /dashboard 200 in 183ms
+ GET /dashboard 200 in 191ms
+ ✓ Compiled in 54ms
+ ✓ Compiled in 24ms
+ GET /dashboard 200 in 326ms
+ GET /dashboard 200 in 211ms
+ ✓ Compiled in 67ms
+ GET /dashboard 200 in 317ms
+ GET /dashboard 200 in 256ms
+ GET /dashboard 200 in 259ms
+ ✓ Compiled in 132ms
+ ✓ Compiled in 35ms
+ GET /dashboard 200 in 307ms
+ GET /dashboard 200 in 218ms
+ GET /dashboard 200 in 249ms
+ GET /dashboard 200 in 212ms
+ GET /dashboard 200 in 201ms
+ GET /dashboard 200 in 215ms
