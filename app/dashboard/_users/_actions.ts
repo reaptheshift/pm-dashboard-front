@@ -4,7 +4,21 @@ import { getAuthToken } from "@/lib/auth-server";
 
 const XANO_BASE_URL = "https://xtvj-bihp-mh8d.n7e.xano.io/api:hRRjrmcb";
 
-export interface User {
+export interface Project {
+  id: number;
+  creator_id: number;
+  name: string;
+  description: string;
+  location: string;
+  start_date: string; // date as string
+  end_date: string; // date as string
+  status: string; // enum as string
+  modified_at: number;
+  created_at: number;
+  image: string; // image URL or path
+}
+
+export interface FieldWorker {
   id: number;
   created_at: number;
   modified_at: number;
@@ -12,15 +26,16 @@ export interface User {
   name: string;
   email: string;
   role: string;
+  projects: Project[];
 }
-export interface CreateUserData {
+export interface CreateFieldWorkerData {
   name: string;
   email: string;
   role: string;
   password: string;
 }
 
-export interface UpdateUserData {
+export interface UpdateFieldWorkerData {
   name?: string;
   email?: string;
   role?: string;
@@ -29,7 +44,7 @@ export interface UpdateUserData {
 }
 
 // Get all users
-export async function getUsers(): Promise<User[]> {
+export async function getFieldWorkers(): Promise<FieldWorker[]> {
   try {
     const authToken = await getAuthToken();
 
@@ -57,7 +72,9 @@ export async function getUsers(): Promise<User[]> {
 }
 
 // Create a new user
-export async function createUser(userData: CreateUserData): Promise<User> {
+export async function createFieldWorker(
+  userData: CreateFieldWorkerData
+): Promise<FieldWorker> {
   try {
     const authToken = await getAuthToken();
 
@@ -91,8 +108,8 @@ export async function createUser(userData: CreateUserData): Promise<User> {
 // Update a user
 export async function updateUser(
   userId: number,
-  userData: UpdateUserData
-): Promise<User> {
+  userData: UpdateFieldWorkerData
+): Promise<FieldWorker> {
   try {
     const authToken = await getAuthToken();
 
