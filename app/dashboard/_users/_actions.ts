@@ -13,7 +13,6 @@ export interface User {
   email: string;
   role: string;
 }
-
 export interface CreateUserData {
   name: string;
   email: string;
@@ -38,7 +37,7 @@ export async function getUsers(): Promise<User[]> {
       throw new Error("Authentication required");
     }
 
-    const response = await fetch(`${XANO_BASE_URL}/users`, {
+    const response = await fetch(`${XANO_BASE_URL}/field_workers`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -66,7 +65,7 @@ export async function createUser(userData: CreateUserData): Promise<User> {
       throw new Error("Authentication required");
     }
 
-    const response = await fetch(`${XANO_BASE_URL}/users`, {
+    const response = await fetch(`${XANO_BASE_URL}/field_workers`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${authToken}`,

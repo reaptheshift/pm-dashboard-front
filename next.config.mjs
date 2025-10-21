@@ -10,6 +10,16 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   // Ensure proper server-side rendering
   trailingSlash: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "xtvj-bihp-mh8d.n7e.xano.io",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,60 +32,50 @@ import {
   Users,
 } from "lucide-react";
 import { ProjectDialog } from "./ProjectDialog";
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: "Active" | "Inactive";
-  members: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>;
-  created: string;
-  updated: string;
-  avatar?: string;
-}
+import { createProject, type Project } from "../_actions";
+import { toast } from "sonner";
 
 interface ProjectsTableProps {
   projects?: Project[];
+  isLoading?: boolean;
   onEdit?: (project: Project) => void;
   onDelete?: (project: Project) => void;
   onCreateNew?: () => void;
+  onRefreshProjects?: () => Promise<void>;
 }
 
 export function ProjectsTable({
   projects = [],
+  isLoading = false,
   onEdit,
   onDelete,
   onCreateNew,
+  onRefreshProjects,
 }: ProjectsTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const itemsPerPage = 10;
-  const totalPages = Math.ceil(projects.length / itemsPerPage);
+  const totalPages = Math.ceil((projects?.length || 0) / itemsPerPage);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentData = projects.slice(startIndex, endIndex);
+  const currentData = (projects || []).slice(startIndex, endIndex);
 
   // Calculate metrics
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => p.status === "Active").length;
-  const completedProjects = projects.filter(
-    (p) => p.status === "Inactive"
+  const totalProjects = projects?.length || 0;
+  const activeProjects = (projects || []).filter(
+    (p) => p.status === "active"
   ).length;
-  const totalMembers = projects.reduce(
-    (acc, project) => acc + project.members.length,
-    0
-  );
+  const completedProjects = (projects || []).filter(
+    (p) => p.status === "completed"
+  ).length;
+  const totalMembers = 0; // API doesn't provide members data
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case "Active":
+      case "active":
         return "default";
-      case "Inactive":
+      case "completed":
         return "secondary";
       default:
         return "outline";
@@ -93,18 +84,56 @@ export function ProjectsTable({
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case "Active":
+      case "active":
         return "bg-green-50 text-green-700 border-green-200";
-      case "Inactive":
+      case "completed":
         return "bg-gray-50 text-gray-700 border-gray-200";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
     }
   };
 
-  const handleCreateProject = (data: any) => {
-    // TODO: Implement project creation logic
-    console.log("Creating project:", data);
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file); // yields: data:<mime>;base64,<data>
+    });
+
+  const handleCreateProject = async (data: any) => {
+    try {
+      const projectImageBase64 = data.picture
+        ? await fileToDataUrl(data.picture)
+        : null;
+
+      await createProject({
+        name: data.name,
+        description: data.description || null,
+        status: "active",
+        start_date: data.startDate || null,
+        end_date: data.endDate || null,
+        project_image: projectImageBase64,
+      });
+
+      // Show success toast
+      toast.success("Project created successfully", {
+        description: `${data.name} has been added to your projects`,
+      });
+
+      // Refresh the projects list
+      if (onRefreshProjects) {
+        await onRefreshProjects();
+      }
+
+      // Close the modal
+      setIsCreateModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to create project", {
+        description: err.message || "There was an error creating the project",
+      });
+    }
   };
 
   const handleOpenCreateModal = () => {
@@ -276,7 +305,17 @@ export function ProjectsTable({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-          {projects.length === 0 ? (
+          {isLoading ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Loading projects...
+              </h3>
+              <p className="text-gray-500">
+                Please wait while we fetch your projects
+              </p>
+            </div>
+          ) : (projects || []).length === 0 ? (
             <div className="p-12 text-center">
               <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -299,25 +338,62 @@ export function ProjectsTable({
                 <TableRow>
                   <TableHead className="px-6 py-3">Project</TableHead>
                   <TableHead className="px-6 py-3">Status</TableHead>
-                  <TableHead className="px-6 py-3">Members</TableHead>
+                  <TableHead className="px-6 py-3">Start Date</TableHead>
+                  <TableHead className="px-6 py-3">End Date</TableHead>
                   <TableHead className="px-6 py-3">Created</TableHead>
-                  <TableHead className="px-6 py-3">Updated</TableHead>
                   <TableHead className="px-6 py-3"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentData.map((project, index) => (
+                {(currentData || []).map((project, index) => (
                   <TableRow
                     key={project.id}
                     className={index % 2 === 0 ? "bg-gray-50" : ""}
                   >
                     <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-semibold text-white">
-                            {project.name.charAt(0)}
-                          </span>
-                        </div>
+                        {project.image &&
+                        typeof project.image === "object" &&
+                        project.image.url ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center">
+                            <Image
+                              src={
+                                project.image.url.startsWith("data:")
+                                  ? project.image.url
+                                  : project.image.url.startsWith("http")
+                                  ? project.image.url
+                                  : `https://xtvj-bihp-mh8d.n7e.xano.io${project.image.url}`
+                              }
+                              alt={`${project.name} project image`}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : project.image &&
+                          typeof project.image === "string" ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center">
+                            <Image
+                              src={
+                                project.image.startsWith("data:")
+                                  ? project.image
+                                  : project.image.startsWith("http")
+                                  ? project.image
+                                  : `https://xtvj-bihp-mh8d.n7e.xano.io${project.image}`
+                              }
+                              alt={`${project.name} project image`}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-white">
+                              {project.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className="text-sm font-medium text-gray-900">
                             {project.name}
@@ -338,31 +414,22 @@ export function ProjectsTable({
                       </Badge>
                     </TableCell>
                     <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-1">
-                        {project.members.slice(0, 5).map((member, idx) => (
-                          <div
-                            key={member.id}
-                            className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-semibold text-white border-2 border-white"
-                            style={{ marginLeft: idx > 0 ? "-4px" : "0" }}
-                          >
-                            {member.name.charAt(0)}
-                          </div>
-                        ))}
-                        {project.members.length > 5 && (
-                          <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-semibold text-gray-600 border-2 border-white">
-                            +{project.members.length - 5}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">
-                        {project.created}
+                        {project.start_date
+                          ? new Date(project.start_date).toLocaleDateString()
+                          : "Not set"}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">
-                        {project.updated}
+                        {project.end_date
+                          ? new Date(project.end_date).toLocaleDateString()
+                          : "Not set"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-900">
+                        {new Date(project.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-4">
@@ -393,7 +460,7 @@ export function ProjectsTable({
         </div>
 
         {/* Pagination */}
-        {projects.length > 0 && (
+        {(projects || []).length > 0 && (
           <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200">
             <span className="text-sm font-medium text-gray-700">
               Page {currentPage} of {totalPages}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,8 @@ interface ProjectFormData {
   status: string;
   linkExistingDoc: string;
   picture?: File | null;
+  startDate?: string;
+  endDate?: string;
 }
 
 export function ProjectDialog({
@@ -45,6 +48,8 @@ export function ProjectDialog({
     status: "Active",
     linkExistingDoc: "",
     picture: null,
+    startDate: "",
+    endDate: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -57,6 +62,8 @@ export function ProjectDialog({
       status: "Active",
       linkExistingDoc: "",
       picture: null,
+      startDate: "",
+      endDate: "",
     });
     onOpenChange(false);
   };
@@ -69,6 +76,8 @@ export function ProjectDialog({
       status: "Active",
       linkExistingDoc: "",
       picture: null,
+      startDate: "",
+      endDate: "",
     });
     onOpenChange(false);
   };
@@ -121,9 +130,11 @@ export function ProjectDialog({
                 {formData.picture ? (
                   <div className="relative">
                     <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center">
-                      <img
+                      <Image
                         src={URL.createObjectURL(formData.picture)}
                         alt="Project preview"
+                        width={80}
+                        height={80}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -215,6 +226,36 @@ export function ProjectDialog({
                 <SelectItem value="Completed">Completed</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Start date
+              </label>
+              <Input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                End date
+              </label>
+              <Input
+                type="date"
+                value={formData.endDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, endDate: e.target.value })
+                }
+                className="w-full"
+              />
+            </div>
           </div>
 
           {/* Link existing doc */}
