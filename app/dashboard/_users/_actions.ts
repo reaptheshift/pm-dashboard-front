@@ -33,6 +33,7 @@ export interface CreateFieldWorkerData {
   email: string;
   role: string;
   password: string;
+  projectIds?: string[];
 }
 
 export interface UpdateFieldWorkerData {
@@ -65,6 +66,13 @@ export async function getFieldWorkers(): Promise<FieldWorker[]> {
     }
 
     const users = await response.json();
+
+    // Validate response structure
+    if (!Array.isArray(users)) {
+      console.error("Invalid API response: expected array, got:", typeof users);
+      throw new Error("Invalid response format from server");
+    }
+
     return users;
   } catch (error: any) {
     throw new Error(error.message || "Failed to fetch users");
@@ -76,11 +84,15 @@ export async function createFieldWorker(
   userData: CreateFieldWorkerData
 ): Promise<FieldWorker> {
   try {
+    console.log("createFieldWorker received data:", userData);
+
     const authToken = await getAuthToken();
 
     if (!authToken) {
       throw new Error("Authentication required");
     }
+
+    console.log("Sending to backend:", JSON.stringify(userData, null, 2));
 
     const response = await fetch(`${XANO_BASE_URL}/field_workers`, {
       method: "POST",
@@ -93,12 +105,22 @@ export async function createFieldWorker(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error("Backend error response:", errorData);
+      console.error("Response status:", response.status);
+      console.error("Response statusText:", response.statusText);
       throw new Error(
         errorData.message || `Failed to create user: ${response.statusText}`
       );
     }
 
     const newUser = await response.json();
+
+    // Validate response structure
+    if (!newUser || typeof newUser.id === "undefined") {
+      console.error("Invalid API response: missing required fields:", newUser);
+      throw new Error("Invalid response format from server");
+    }
+
     return newUser;
   } catch (error: any) {
     throw new Error(error.message || "Failed to create user");

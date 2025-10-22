@@ -19,6 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Eye, EyeOff } from "lucide-react";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
 
 interface UserDialogProps {
   open: boolean;
@@ -32,6 +36,7 @@ interface UserFormData {
   role: string;
   password: string;
   confirmPassword: string;
+  projectIds: string[];
 }
 
 export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
@@ -41,12 +46,72 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
     role: "field_worker",
     password: "",
     confirmPassword: "",
+    projectIds: [],
   });
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [projectOptions, setProjectOptions] = React.useState<
+    MultiSelectOption[]
+  >([]);
+  const [isLoadingProjects, setIsLoadingProjects] = React.useState(false);
+
+  // Fetch projects when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      fetchProjects();
+    }
+  }, [open]);
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoadingProjects(true);
+
+      // Fetch projects using client-side API call
+      const response = await fetch("/api/projects", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch projects: ${response.statusText}`);
+      }
+
+      const projects = await response.json();
+      const options: MultiSelectOption[] = projects.map((project: any) => ({
+        label: project.name,
+        value: project.id.toString(),
+      }));
+      setProjectOptions(options);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      setProjectOptions([]);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!formData.fullName.trim()) {
+      alert("Full name is required");
+      return;
+    }
+    if (!formData.email.trim()) {
+      alert("Email is required");
+      return;
+    }
+    if (!formData.password.trim()) {
+      alert("Password is required");
+      return;
+    }
+    if (!formData.confirmPassword.trim()) {
+      alert("Confirm password is required");
+      return;
+    }
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -54,6 +119,14 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
+    console.log("Submitting form data:", formData);
     onSubmit(formData);
     // Reset form
     setFormData({
@@ -62,6 +135,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
       role: "field_worker",
       password: "",
       confirmPassword: "",
+      projectIds: [],
     });
     onOpenChange(false);
   };
@@ -74,6 +148,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
       role: "field_worker",
       password: "",
       confirmPassword: "",
+      projectIds: [],
     });
     onOpenChange(false);
   };
@@ -103,6 +178,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
         <form
           onSubmit={handleSubmit}
           className="px-6 py-6 space-y-5 overflow-y-auto flex-1"
+          autoComplete="off"
         >
           {/* Full Name */}
           <div className="space-y-2">
@@ -110,7 +186,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
               htmlFor="fullName"
               className="block text-sm font-medium text-gray-700"
             >
-              Full name
+              Full name <span className="text-red-500">*</span>
             </label>
             <Input
               id="fullName"
@@ -121,6 +197,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                 setFormData({ ...formData, fullName: e.target.value })
               }
               className="w-full"
+              autoComplete="off"
               required
             />
           </div>
@@ -131,7 +208,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
               htmlFor="email"
               className="block text-sm font-medium text-gray-700"
             >
-              E-mail address
+              E-mail address <span className="text-red-500">*</span>
             </label>
             <Input
               id="email"
@@ -142,6 +219,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                 setFormData({ ...formData, email: e.target.value })
               }
               className="w-full"
+              autoComplete="off"
               required
             />
           </div>
@@ -152,7 +230,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700"
             >
-              Password
+              Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Input
@@ -164,6 +242,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 className="w-full pr-10"
+                autoComplete="new-password"
                 required
               />
               <Button
@@ -188,7 +267,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
               htmlFor="confirmPassword"
               className="block text-sm font-medium text-gray-700"
             >
-              Confirm Password
+              Confirm Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Input
@@ -200,6 +279,7 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
                 className="w-full pr-10"
+                autoComplete="new-password"
                 required
               />
               <Button
@@ -224,14 +304,9 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
               htmlFor="role"
               className="block text-sm font-medium text-gray-700"
             >
-              Role
+              Role (Fixed)
             </label>
-            <Select
-              value={formData.role}
-              onValueChange={(value) =>
-                setFormData({ ...formData, role: value })
-              }
-            >
+            <Select value={formData.role} disabled={true}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -239,6 +314,40 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                 <SelectItem value="field_worker">Field Worker</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500">
+              All new users are created as Field Workers by default.
+            </p>
+          </div>
+
+          {/* Projects */}
+          <div className="space-y-2">
+            <label
+              htmlFor="projects"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Assign to Projects
+            </label>
+            <MultiSelect
+              options={projectOptions}
+              value={formData.projectIds}
+              onValueChange={(value) =>
+                setFormData({ ...formData, projectIds: value })
+              }
+              placeholder={
+                isLoadingProjects
+                  ? "Loading projects..."
+                  : projectOptions.length === 0
+                  ? "No projects available"
+                  : "Select projects (optional)"
+              }
+              disabled={isLoadingProjects || projectOptions.length === 0}
+              maxCount={2}
+              searchable={true}
+            />
+            <p className="text-xs text-gray-500">
+              Select projects to assign this user to. You can leave this empty
+              and assign projects later.
+            </p>
           </div>
         </form>
 

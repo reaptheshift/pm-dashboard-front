@@ -10,10 +10,10 @@ import {
   UsersPagination,
 } from "./_components";
 import {
-  createUser,
-  getUsers,
+  createFieldWorker,
+  getFieldWorkers,
   updateUser,
-  type User as ApiUser,
+  type FieldWorker as ApiUser,
 } from "./_actions";
 
 interface User {
@@ -50,6 +50,7 @@ export function UserContent({
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isHydrated, setIsHydrated] = React.useState(false);
+  const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const itemsPerPage = 10;
 
   // Handle hydration
@@ -62,21 +63,43 @@ export function UserContent({
     async function fetchUsers() {
       try {
         setIsLoading(true);
-        const apiUsers = await getUsers();
+        const apiUsers = await getFieldWorkers();
 
         // Transform API users to match our User interface
-        const transformedUsers: User[] = apiUsers.map((apiUser: ApiUser) => ({
-          id: apiUser.id.toString(),
-          name: apiUser.name,
-          email: apiUser.email,
-          role: apiUser.role,
-          status: "Active" as const, // Default status for now
-          projects: [], // Empty for now
-          lastLogin: apiUser.last_login
-            ? new Date(apiUser.last_login).toLocaleString()
-            : "Never",
-          joinedDate: new Date(apiUser.created_at).toLocaleString(),
-        }));
+        const transformedUsers: User[] = apiUsers
+          .map((apiUser: ApiUser) => {
+            // Defensive programming - ensure all required fields exist
+            if (
+              !apiUser ||
+              typeof apiUser.id === "undefined" ||
+              !apiUser.name ||
+              !apiUser.email
+            ) {
+              console.warn("Invalid user data received:", apiUser);
+              return null;
+            }
+
+            return {
+              id: apiUser.id.toString(),
+              name: apiUser.name || "Unknown",
+              email: apiUser.email || "No email",
+              role: apiUser.role || "field_worker",
+              status: "Active" as const, // Default status for now
+              projects: Array.isArray(apiUser.projects)
+                ? apiUser.projects.map((project) => ({
+                    id: project?.id?.toString() || "unknown",
+                    name: project?.name || "Unnamed Project",
+                  }))
+                : [],
+              lastLogin: apiUser.last_login
+                ? new Date(apiUser.last_login).toLocaleString()
+                : "Never",
+              joinedDate: apiUser.created_at
+                ? new Date(apiUser.created_at).toLocaleString()
+                : new Date().toLocaleString(),
+            };
+          })
+          .filter((user) => user !== null) as User[];
 
         setUsers(transformedUsers);
       } catch (error: any) {
@@ -109,27 +132,45 @@ export function UserContent({
   };
 
   const handleSubmitUser = async (data: any) => {
+    // Prevent multiple simultaneous requests
+    if (isCreatingUser) {
+      toast.warning("Please wait", {
+        description: "A user is already being created",
+      });
+      return;
+    }
+
     try {
-      // Call the createUser server action
-      const newUser = await createUser({
+      setIsCreatingUser(true);
+
+      // Call the createFieldWorker server action
+      const newUser = await createFieldWorker({
         name: data.fullName,
         email: data.email,
         role: data.role,
         password: data.password,
+        projectIds: data.projectIds || [],
       });
 
       // Transform the new user to match our User interface
       const transformedUser: User = {
         id: newUser.id.toString(),
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
+        name: newUser.name || "Unknown",
+        email: newUser.email || "No email",
+        role: newUser.role || "field_worker",
         status: "Active" as const,
-        projects: [],
+        projects: Array.isArray(newUser.projects)
+          ? newUser.projects.map((project) => ({
+              id: project?.id?.toString() || "unknown",
+              name: project?.name || "Unnamed Project",
+            }))
+          : [],
         lastLogin: newUser.last_login
           ? new Date(newUser.last_login).toLocaleString()
           : "Never",
-        joinedDate: new Date(newUser.created_at).toLocaleString(),
+        joinedDate: newUser.created_at
+          ? new Date(newUser.created_at).toLocaleString()
+          : new Date().toLocaleString(),
       };
 
       // Add the new user to the existing users list
@@ -143,9 +184,12 @@ export function UserContent({
       // Close the dialog
       setIsDialogOpen(false);
     } catch (error: any) {
+      console.error("Error creating user:", error);
       toast.error("Failed to create user", {
         description: error.message || "There was an error creating the user",
       });
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -157,15 +201,22 @@ export function UserContent({
       // Transform the updated user to match our User interface
       const transformedUser: User = {
         id: updatedUser.id.toString(),
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
+        name: updatedUser.name || "Unknown",
+        email: updatedUser.email || "No email",
+        role: updatedUser.role || "field_worker",
         status: "Active" as const,
-        projects: [],
+        projects: Array.isArray(updatedUser.projects)
+          ? updatedUser.projects.map((project) => ({
+              id: project?.id?.toString() || "unknown",
+              name: project?.name || "Unnamed Project",
+            }))
+          : [],
         lastLogin: updatedUser.last_login
           ? new Date(updatedUser.last_login).toLocaleString()
           : "Never",
-        joinedDate: new Date(updatedUser.created_at).toLocaleString(),
+        joinedDate: updatedUser.created_at
+          ? new Date(updatedUser.created_at).toLocaleString()
+          : new Date().toLocaleString(),
       };
 
       // Update the user in the existing users list
