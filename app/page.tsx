@@ -2,30 +2,26 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/auth-client";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function HomePage() {
   const router = useRouter();
+  const { isLoading } = useAuth();
 
   useEffect(() => {
-    const handleAuth = async () => {
-      try {
-        const authResult = await authService.checkAuth();
+    // Since middleware handles route protection, we can simply redirect
+    // The middleware will check for the AuthToken cookie and redirect appropriately
+    if (!isLoading) {
+      // Check if we have an auth token in cookies
+      const hasAuthToken = document.cookie.includes("AuthToken=");
 
-        if (authResult.success && authResult.user) {
-          // User is authenticated, redirect to dashboard
-          router.push("/dashboard");
-        } else {
-          // User is not authenticated, redirect to login
-          router.push("/login");
-        }
-      } catch (error) {
+      if (hasAuthToken) {
+        router.push("/dashboard");
+      } else {
         router.push("/login");
       }
-    };
-
-    handleAuth();
-  }, [router]);
+    }
+  }, [router, isLoading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

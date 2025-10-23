@@ -19,22 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Upload, X } from "lucide-react";
+import { countries } from "@/lib/countries";
 
 interface ProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: ProjectFormData) => void;
+  onSubmit: (formData: ProjectFormData) => void;
 }
 
 interface ProjectFormData {
   name: string;
   description: string;
   status: string;
-  linkExistingDoc: string;
+  country: string;
   picture?: File | null;
-  startDate?: string;
-  endDate?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export function ProjectDialog({
@@ -46,10 +49,10 @@ export function ProjectDialog({
     name: "",
     description: "",
     status: "Active",
-    linkExistingDoc: "",
+    country: "",
     picture: null,
-    startDate: "",
-    endDate: "",
+    startDate: undefined,
+    endDate: undefined,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -60,10 +63,10 @@ export function ProjectDialog({
       name: "",
       description: "",
       status: "Active",
-      linkExistingDoc: "",
+      country: "",
       picture: null,
-      startDate: "",
-      endDate: "",
+      startDate: undefined,
+      endDate: undefined,
     });
     onOpenChange(false);
   };
@@ -74,10 +77,10 @@ export function ProjectDialog({
       name: "",
       description: "",
       status: "Active",
-      linkExistingDoc: "",
+      country: "",
       picture: null,
-      startDate: "",
-      endDate: "",
+      startDate: undefined,
+      endDate: undefined,
     });
     onOpenChange(false);
   };
@@ -138,13 +141,15 @@ export function ProjectDialog({
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <button
-                      type="button"
+                    <Button
+                      title="Remove picture"
+                      variant="ghost"
+                      size="icon"
                       onClick={handleRemovePicture}
                       className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                     >
                       <X className="w-3 h-3" />
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <label className="cursor-pointer">
@@ -228,61 +233,47 @@ export function ProjectDialog({
             </Select>
           </div>
 
+          {/* Country */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Country</label>
+            <SearchSelect
+              options={countries}
+              value={formData.country}
+              onValueChange={(value) =>
+                setFormData({ ...formData, country: value })
+              }
+              placeholder="Select country..."
+              searchPlaceholder="Search countries..."
+              emptyMessage="No country found."
+            />
+          </div>
+
           {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
                 Start Date
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.startDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, startDate: e.target.value })
+                onChange={(date) =>
+                  setFormData({ ...formData, startDate: date })
                 }
-                className="w-full"
-                min={new Date().toISOString().split("T")[0]}
+                placeholder="Select start date"
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
                 End Date
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.endDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, endDate: e.target.value })
-                }
-                className="w-full"
-                min={
-                  formData.startDate || new Date().toISOString().split("T")[0]
-                }
+                onChange={(date) => setFormData({ ...formData, endDate: date })}
+                placeholder="Select end date"
+                disabled={!formData.startDate}
+                fromDate={formData.startDate}
               />
             </div>
-          </div>
-
-          {/* Link existing doc */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Link existing doc
-            </label>
-            <Select
-              value={formData.linkExistingDoc}
-              onValueChange={(value) =>
-                setFormData({ ...formData, linkExistingDoc: value })
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose document" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sheet-s201">Sheet s201</SelectItem>
-                <SelectItem value="doc-001">Document 001</SelectItem>
-                <SelectItem value="manual-v2">Manual v2</SelectItem>
-                <SelectItem value="specs-final">Specs Final</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </form>
 

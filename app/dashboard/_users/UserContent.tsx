@@ -9,6 +9,7 @@ import {
   UsersTable,
   UsersPagination,
 } from "./_components";
+import { UsersSkeleton } from "./_components/UsersSkeleton";
 import {
   createFieldWorker,
   getFieldWorkers,
@@ -33,8 +34,8 @@ interface User {
 
 interface UserContentProps {
   onCreateUser?: () => void;
-  onEdit?: (user: User) => void;
-  onDelete?: (user: User) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function UserContent({
@@ -75,7 +76,7 @@ export function UserContent({
               !apiUser.name ||
               !apiUser.email
             ) {
-              console.warn("Invalid user data received:", apiUser);
+              // Invalid user data received
               return null;
             }
 
@@ -184,7 +185,6 @@ export function UserContent({
       // Close the dialog
       setIsDialogOpen(false);
     } catch (error: any) {
-      console.error("Error creating user:", error);
       toast.error("Failed to create user", {
         description: error.message || "There was an error creating the user",
       });
@@ -230,13 +230,7 @@ export function UserContent({
 
   // Show loading state until hydrated to prevent hydration mismatch
   if (!isHydrated || isLoading) {
-    return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
+    return <UsersSkeleton />;
   }
 
   return (

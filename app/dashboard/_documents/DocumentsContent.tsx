@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
-import { DashboardSkeleton } from "../_components/dashboardSkeleton";
+import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
 import { backendAPI, Document } from "@/lib/backend-api";
 
 export function DocumentsContent() {
@@ -41,16 +41,9 @@ export function DocumentsContent() {
         setLoading(true);
       }
       setError(null);
-      console.log(
-        `🔄 Loading documents from backend${
-          syncWithS3 ? " with S3 sync" : ""
-        }...`
-      );
       const response = await backendAPI.getDocuments(syncWithS3);
-      console.log("✅ Documents loaded:", response.documents);
       setDocuments(response.documents);
     } catch (err) {
-      console.error("❌ Failed to load documents:", err);
       setError("Failed to load documents. Please try again.");
       // Fallback to sample data for demo
       setDocuments([]);
@@ -58,28 +51,6 @@ export function DocumentsContent() {
       if (showLoading) {
         setLoading(false);
       }
-    }
-  };
-
-  // Force sync with S3
-  const syncWithS3 = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log("🔄 Syncing with S3...");
-      const result = await backendAPI.syncWithS3();
-      console.log("✅ S3 sync result:", result);
-
-      // Reload documents after sync
-      await loadDocuments(false);
-
-      return result;
-    } catch (err) {
-      console.error("❌ Failed to sync with S3:", err);
-      setError("Failed to sync with S3. Please try again.");
-      return { success: false, message: "Failed to sync with S3" };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -91,15 +62,11 @@ export function DocumentsContent() {
   // Delete document function
   const deleteDocument = async (fileId: string, fileName: string) => {
     try {
-      console.log(`🗑️ Deleting document: ${fileName} (${fileId})`);
       await backendAPI.deleteFile(fileId);
 
       // Remove from local state immediately for better UX
       setDocuments((prev) => prev.filter((doc) => doc.fileId !== fileId));
-
-      console.log(`✅ Document deleted successfully: ${fileName}`);
     } catch (error) {
-      console.error("❌ Failed to delete document:", error);
       setError(`Failed to delete ${fileName}. Please try again.`);
     }
   };
@@ -203,8 +170,13 @@ export function DocumentsContent() {
 
   const shouldShowDocuments = hash === "#Documents" || hash === "";
 
+  // Show skeleton loader while loading
+  if (loading) {
+    return <DocumentsSkeleton />;
+  }
+
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<DocumentsSkeleton />}>
       <div className="space-y-8">
         {/* Header Section */}
         <div className="flex justify-between items-center">
@@ -212,35 +184,16 @@ export function DocumentsContent() {
             <h1 className="text-3xl font-semibold text-gray-900">
               {activeHeader}
             </h1>
-            {loading && (
-              <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Loading documents...
-              </p>
-            )}
           </div>
           <div className="flex items-center gap-3">
             {/* Manual Refresh Button */}
             <button
               onClick={() => loadDocuments(true, true)}
-              disabled={loading}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
               title="Refresh documents list and sync with S3"
             >
               <svg
-                className={`w-5 h-5 ${loading ? "animate-spin" : ""}`}
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -286,7 +239,7 @@ export function DocumentsContent() {
                     Total Documents
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {loading ? "..." : (documents || []).length}
+                    {(documents || []).length}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-yellow-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -308,11 +261,11 @@ export function DocumentsContent() {
                     Processing
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {loading
-                      ? "..."
-                      : (documents || []).filter(
-                          (d) => d.processingStatus === "PROCESSING"
-                        ).length}
+                    {
+                      (documents || []).filter(
+                        (d) => d.processingStatus === "PROCESSING"
+                      ).length
+                    }
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-blue-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -334,11 +287,11 @@ export function DocumentsContent() {
                     Completed
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {loading
-                      ? "..."
-                      : (documents || []).filter(
-                          (d) => d.processingStatus === "COMPLETED"
-                        ).length}
+                    {
+                      (documents || []).filter(
+                        (d) => d.processingStatus === "COMPLETED"
+                      ).length
+                    }
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-green-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -360,11 +313,11 @@ export function DocumentsContent() {
                     Failed
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {loading
-                      ? "..."
-                      : (documents || []).filter(
-                          (d) => d.processingStatus === "FAILED"
-                        ).length}
+                    {
+                      (documents || []).filter(
+                        (d) => d.processingStatus === "FAILED"
+                      ).length
+                    }
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-red-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -497,18 +450,7 @@ export function DocumentsContent() {
 
         {/* Documents Table */}
         {shouldShowDocuments &&
-          (loading ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-                <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : error ? (
+          (error ? (
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <div className="text-center">
                 <p className="text-red-600 mb-4">{error}</p>

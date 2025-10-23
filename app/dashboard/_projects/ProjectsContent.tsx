@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ProjectsTable } from "./_components/ProjectsTable";
+import { ProjectsSkeleton } from "./_components/ProjectsSkeleton";
 import { getProjects, type Project } from "./_actions";
 
 export function ProjectsContent() {
@@ -16,7 +17,7 @@ export function ProjectsContent() {
         const fetchedProjects = await getProjects();
         setProjects(fetchedProjects);
       } catch (error: any) {
-        console.error("Failed to fetch projects:", error);
+        // Failed to fetch projects
       } finally {
         setIsLoading(false);
       }
@@ -29,11 +30,11 @@ export function ProjectsContent() {
     // TODO: Implement create new project functionality
   };
 
-  const handleEdit = (_project: any) => {
+  const handleEdit = () => {
     // TODO: Implement edit project functionality
   };
 
-  const handleDelete = (_project: any) => {
+  const handleDelete = () => {
     // TODO: Implement delete project functionality
   };
 
@@ -42,9 +43,13 @@ export function ProjectsContent() {
       const fetchedProjects = await getProjects();
       setProjects(fetchedProjects);
     } catch (error: any) {
-      console.error("Failed to refresh projects:", error);
+      // Failed to refresh projects
     }
   };
+
+  if (isLoading) {
+    return <ProjectsSkeleton />;
+  }
 
   return (
     <ProjectsTable
