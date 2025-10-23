@@ -232,7 +232,7 @@ export function ProjectDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Start date
+                Start Date
               </label>
               <Input
                 type="date"
@@ -241,11 +241,12 @@ export function ProjectDialog({
                   setFormData({ ...formData, startDate: e.target.value })
                 }
                 className="w-full"
+                min={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                End date
+                End Date
               </label>
               <Input
                 type="date"
@@ -254,6 +255,9 @@ export function ProjectDialog({
                   setFormData({ ...formData, endDate: e.target.value })
                 }
                 className="w-full"
+                min={
+                  formData.startDate || new Date().toISOString().split("T")[0]
+                }
               />
             </div>
           </div>
