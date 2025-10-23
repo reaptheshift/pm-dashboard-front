@@ -5,6 +5,7 @@ import { useHash } from "@/hooks/useHash";
 import { DocumentsContent } from "../_documents/DocumentsContent";
 import { ProjectsContent } from "../_projects/ProjectsContent";
 import { UserContent } from "../_users/UserContent";
+import { IntegrationsContent } from "../../../_integrations/IntegrationsContent";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -40,7 +41,7 @@ export function TabRouter() {
     case "#Users":
       return <UserContent />;
     case "#Integrations":
-      return <Placeholder title="Integrations" />;
+      return <IntegrationsContent />;
     case "#AI":
       return <Placeholder title="AI assistant" />;
     case "#SystemLogs":
