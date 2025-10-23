@@ -74,7 +74,6 @@ export function SearchSelect({
       <PopoverContent
         className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
-        style={{ maxHeight: "300px" }}
       >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
