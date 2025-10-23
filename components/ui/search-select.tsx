@@ -51,8 +51,8 @@ export function SearchSelect({
 
   const selectedOption = options.find((option) => option.value === value);
 
-  const handleSelect = (currentValue: string) => {
-    const newValue = currentValue === value && allowClear ? "" : currentValue;
+  const handleSelect = (selectedValue: string) => {
+    const newValue = selectedValue === value && allowClear ? "" : selectedValue;
     onValueChange?.(newValue);
     setOpen(false);
   };
@@ -71,7 +71,10 @@ export function SearchSelect({
           <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+      >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -80,7 +83,7 @@ export function SearchSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={option.value}
                   onSelect={() => handleSelect(option.value)}
                   className="cursor-pointer hover:bg-accent hover:text-accent-foreground"
                 >
