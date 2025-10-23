@@ -22,7 +22,7 @@ import {
 import { SearchSelect } from "@/components/ui/search-select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Upload, X } from "lucide-react";
-import { countries } from "@/lib/countries";
+import { usaStates } from "@/lib/usa-states";
 
 interface ProjectDialogProps {
   open: boolean;
@@ -34,7 +34,7 @@ interface ProjectFormData {
   name: string;
   description: string;
   status: string;
-  country: string;
+  location: string;
   picture?: File | null;
   startDate?: Date;
   endDate?: Date;
@@ -49,7 +49,7 @@ export function ProjectDialog({
     name: "",
     description: "",
     status: "Active",
-    country: "",
+    location: "",
     picture: null,
     startDate: undefined,
     endDate: undefined,
@@ -63,7 +63,7 @@ export function ProjectDialog({
       name: "",
       description: "",
       status: "Active",
-      country: "",
+      location: "",
       picture: null,
       startDate: undefined,
       endDate: undefined,
@@ -77,7 +77,7 @@ export function ProjectDialog({
       name: "",
       description: "",
       status: "Active",
-      country: "",
+      location: "",
       picture: null,
       startDate: undefined,
       endDate: undefined,
@@ -233,18 +233,20 @@ export function ProjectDialog({
             </Select>
           </div>
 
-          {/* Country */}
+          {/* Location */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Country</label>
+            <label className="text-sm font-medium text-gray-700">
+              Location
+            </label>
             <SearchSelect
-              options={countries}
-              value={formData.country}
+              options={usaStates}
+              value={formData.location}
               onValueChange={(value) =>
-                setFormData({ ...formData, country: value })
+                setFormData({ ...formData, location: value })
               }
-              placeholder="Select country..."
-              searchPlaceholder="Search countries..."
-              emptyMessage="No country found."
+              placeholder="Select location..."
+              searchPlaceholder="Search locations..."
+              emptyMessage="No location found."
             />
           </div>
 
