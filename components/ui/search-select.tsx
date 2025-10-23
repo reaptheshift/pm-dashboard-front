@@ -74,6 +74,7 @@ export function SearchSelect({
       <PopoverContent
         className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
+        style={{ maxHeight: "300px" }}
       >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
@@ -83,8 +84,11 @@ export function SearchSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
-                  onSelect={() => handleSelect(option.value)}
+                  value={option.label}
+                  onSelect={() => {
+                    // Call our handler with the option value
+                    handleSelect(option.value);
+                  }}
                   className="cursor-pointer hover:bg-accent hover:text-accent-foreground"
                 >
                   <CheckIcon
