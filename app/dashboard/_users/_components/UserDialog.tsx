@@ -23,6 +23,7 @@ import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
+import { getProjects } from "../../_projects/_actions";
 
 interface UserDialogProps {
   open: boolean;
@@ -66,20 +67,9 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
     try {
       setIsLoadingProjects(true);
 
-      // Fetch projects using client-side API call
-      const response = await fetch("/api/projects", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch projects: ${response.statusText}`);
-      }
-
-      const projects = await response.json();
-      const options: MultiSelectOption[] = projects.map((project: any) => ({
+      // Fetch projects using server action
+      const projects = await getProjects();
+      const options: MultiSelectOption[] = projects.map((project) => ({
         label: project.name,
         value: project.id.toString(),
       }));

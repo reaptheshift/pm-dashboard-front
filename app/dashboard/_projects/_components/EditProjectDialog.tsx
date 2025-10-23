@@ -21,13 +21,15 @@ import {
 } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Upload, X } from "lucide-react";
+import { Upload, X, RotateCcw } from "lucide-react";
 import { usaStates } from "@/lib/usa-states";
+import { type Project } from "../_actions";
 
-interface ProjectDialogProps {
+interface EditProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (formData: ProjectFormData) => void;
+  project: Project | null;
 }
 
 interface ProjectFormData {
@@ -40,11 +42,12 @@ interface ProjectFormData {
   endDate?: Date;
 }
 
-export function ProjectDialog({
+export function EditProjectDialog({
   open,
   onOpenChange,
   onSubmit,
-}: ProjectDialogProps) {
+  project,
+}: EditProjectDialogProps) {
   const [formData, setFormData] = React.useState<ProjectFormData>({
     name: "",
     description: "",
@@ -55,6 +58,23 @@ export function ProjectDialog({
     endDate: undefined,
   });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Update form data when project changes or dialog opens
+  React.useEffect(() => {
+    if (project && open) {
+      setFormData({
+        name: project.name,
+        description: project.description || "",
+        status: project.status,
+        location: project.location || "",
+        picture: null, // Don't pre-populate file input
+        startDate: project.start_date
+          ? new Date(project.start_date)
+          : undefined,
+        endDate: project.end_date ? new Date(project.end_date) : undefined,
+      });
+    }
+  }, [project, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,23 +127,25 @@ export function ProjectDialog({
     setFormData({ ...formData, picture: null });
   };
 
+  if (!project) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-[512px] max-h-[80vh] p-0 gap-0 flex flex-col"
-        aria-describedby="project-dialog-description"
+        aria-describedby="edit-project-dialog-description"
       >
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-0">
           <div className="space-y-1">
             <DialogTitle className="text-lg font-semibold text-gray-900">
-              Create new project
+              Edit project
             </DialogTitle>
             <DialogDescription
-              id="project-dialog-description"
+              id="edit-project-dialog-description"
               className="text-sm text-gray-600"
             >
-              Add a new project to your organization. Fill in the details below
+              Update the project details below
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -152,15 +174,53 @@ export function ProjectDialog({
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <Button
-                      title="Remove picture"
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleRemovePicture}
-                      className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    <div
+                      title="Click image to change"
+                      className="absolute -top-1 -right-1 w-6 h-6 bg-gray-500 text-white rounded-full flex items-center justify-center"
                     >
-                      <X className="w-3 h-3" />
-                    </Button>
+                      <RotateCcw className="w-3 h-3" />
+                    </div>
+                  </div>
+                ) : project.image ? (
+                  <div className="relative">
+                    <label className="cursor-pointer">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center hover:border-gray-400 hover:bg-gray-100 transition-colors">
+                        <Image
+                          src={
+                            typeof project.image === "object" &&
+                            project.image.url
+                              ? project.image.url.startsWith("data:")
+                                ? project.image.url
+                                : project.image.url.startsWith("http")
+                                ? project.image.url
+                                : `https://xtvj-bihp-mh8d.n7e.xano.io${project.image.url}`
+                              : typeof project.image === "string"
+                              ? project.image.startsWith("data:")
+                                ? project.image
+                                : project.image.startsWith("http")
+                                ? project.image
+                                : `https://xtvj-bihp-mh8d.n7e.xano.io${project.image}`
+                              : ""
+                          }
+                          alt={`${project.name} project image`}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <div
+                      title="Click image to change"
+                      className="absolute -top-1 -right-1 w-6 h-6 bg-gray-500 text-white rounded-full flex items-center justify-center"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </div>
                   </div>
                 ) : (
                   <label className="cursor-pointer">
@@ -180,6 +240,8 @@ export function ProjectDialog({
                 <p className="text-sm text-gray-600">
                   {formData.picture
                     ? `Selected: ${formData.picture.name}`
+                    : project.image
+                    ? "Click to change project picture"
                     : "Click to upload project picture"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -306,7 +368,7 @@ export function ProjectDialog({
             disabled={isSubmitting}
             className="bg-gray-900 text-white px-5 py-2 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Creating..." : "Create Project"}
+            {isSubmitting ? "Updating..." : "Update Project"}
           </Button>
         </DialogFooter>
       </DialogContent>

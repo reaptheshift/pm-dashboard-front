@@ -32,7 +32,14 @@ import {
   Users,
 } from "lucide-react";
 import { ProjectDialog } from "./ProjectDialog";
-import { createProject, type Project } from "../_actions";
+import { EditProjectDialog } from "./EditProjectDialog";
+import { DeleteProjectDialog } from "./DeleteProjectDialog";
+import {
+  createProject,
+  updateProject,
+  deleteProject,
+  type Project,
+} from "../_actions";
 import { toast } from "sonner";
 
 interface ProjectsTableProps {
@@ -54,6 +61,11 @@ export function ProjectsTable({
 }: ProjectsTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [selectedProject, setSelectedProject] = React.useState<Project | null>(
+    null
+  );
   const itemsPerPage = 10;
   const totalPages = Math.ceil((projects?.length || 0) / itemsPerPage);
 
@@ -110,7 +122,8 @@ export function ProjectsTable({
       await createProject({
         name: data.name,
         description: data.description || null,
-        status: "active",
+        location: data.location || null,
+        status: data.status || "active",
         start_date: data.startDate || null,
         end_date: data.endDate || null,
         project_image: projectImageBase64,
@@ -125,19 +138,98 @@ export function ProjectsTable({
       if (onRefreshProjects) {
         await onRefreshProjects();
       }
-
-      // Close the modal
-      setIsCreateModalOpen(false);
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to create project", {
         description: err.message || "There was an error creating the project",
       });
+      // Re-throw the error so ProjectDialog can handle it
+      throw err;
     }
   };
 
   const handleOpenCreateModal = () => {
     setIsCreateModalOpen(true);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteProject = (project: Project) => {
+    setSelectedProject(project);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleUpdateProject = async (data: any) => {
+    if (!selectedProject) return;
+
+    try {
+      const projectImageBase64 = data.picture
+        ? await fileToDataUrl(data.picture)
+        : null;
+
+      // Build update data object
+      const updateData: any = {
+        name: data.name,
+        description: data.description || null,
+        location: data.location || null,
+        status: data.status || "active",
+        start_date: data.startDate || null,
+        end_date: data.endDate || null,
+        modified_at: Date.now(), // Add current timestamp
+      };
+
+      // Only include project_image if there's a new image to upload
+      if (projectImageBase64) {
+        updateData.project_image = projectImageBase64;
+      }
+
+      await updateProject(selectedProject.id, updateData);
+
+      // Show success toast
+      toast.success("Project updated successfully", {
+        description: `${data.name} has been updated`,
+      });
+
+      // Refresh the projects list
+      if (onRefreshProjects) {
+        await onRefreshProjects();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to update project", {
+        description: err.message || "There was an error updating the project",
+      });
+      // Re-throw the error so EditProjectDialog can handle it
+      throw err;
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedProject) return;
+
+    try {
+      await deleteProject(selectedProject.id);
+
+      // Show success toast
+      toast.success("Project deleted successfully", {
+        description: `${selectedProject.name} has been removed`,
+      });
+
+      // Refresh the projects list
+      if (onRefreshProjects) {
+        await onRefreshProjects();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to delete project", {
+        description: err.message || "There was an error deleting the project",
+      });
+      // Re-throw the error so DeleteProjectDialog can handle it
+      throw err;
+    }
   };
 
   return (
@@ -338,6 +430,7 @@ export function ProjectsTable({
                 <TableRow>
                   <TableHead className="px-6 py-3">Project</TableHead>
                   <TableHead className="px-6 py-3">Status</TableHead>
+                  <TableHead className="px-6 py-3">Location</TableHead>
                   <TableHead className="px-6 py-3">Start Date</TableHead>
                   <TableHead className="px-6 py-3">End Date</TableHead>
                   <TableHead className="px-6 py-3">Created</TableHead>
@@ -414,6 +507,11 @@ export function ProjectsTable({
                       </Badge>
                     </TableCell>
                     <TableCell className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-900 capitalize">
+                        {project.location || "Not set"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">
                         {project.start_date
                           ? new Date(project.start_date).toLocaleDateString()
@@ -437,7 +535,7 @@ export function ProjectsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onEdit?.(project)}
+                          onClick={() => handleEditProject(project)}
                           className="h-8 w-8 p-0"
                         >
                           <Edit className="w-4 h-4" />
@@ -445,7 +543,7 @@ export function ProjectsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onDelete?.(project)}
+                          onClick={() => handleDeleteProject(project)}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -489,11 +587,25 @@ export function ProjectsTable({
         )}
       </div>
 
-      {/* Project Dialog */}
+      {/* Project Dialogs */}
       <ProjectDialog
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreateProject}
+      />
+
+      <EditProjectDialog
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSubmit={handleUpdateProject}
+        project={selectedProject}
+      />
+
+      <DeleteProjectDialog
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        onConfirm={handleConfirmDelete}
+        project={selectedProject}
       />
     </div>
   );
