@@ -71,67 +71,7 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
     console.log("🔍 API Create - Data being sent:", data);
     console.log("🔍 API Create - Has image:", !!data.image);
 
-    // If there's an image, try FormData approach with project_image parameter
-    if (data.image && typeof data.image === "string") {
-      console.log("🔍 API Create - Processing image with FormData");
-      console.log("🔍 API Create - Image data length:", data.image.length);
-      console.log("🔍 API Create - Image starts with:", data.image.substring(0, 50));
-
-      try {
-        // Convert base64 to blob
-        const base64Data = data.image;
-        const response = await fetch(base64Data);
-        const blob = await response.blob();
-        
-        console.log("🔍 API Create - Blob created, size:", blob.size, "type:", blob.type);
-
-        // Create FormData
-        const formData = new FormData();
-        
-        // Add all non-image fields to FormData
-        Object.entries(data).forEach(([key, value]) => {
-          if (key !== "image" && value !== null && value !== undefined) {
-            formData.append(key, value.toString());
-          }
-        });
-
-        // Add image with correct parameter name
-        formData.append("project_image", blob, "project-image.jpg");
-        
-        console.log("🔍 API Create - FormData created with project_image parameter");
-
-        const apiResponse = await fetch(`${XANO_BASE_URL}/projects`, {
-          method: "POST",
-          headers: {
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            // Don't set Content-Type for FormData, let browser set it with boundary
-          },
-          body: formData,
-        });
-
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json().catch(() => ({}));
-          console.error("🔍 API Create - FormData Error response:", apiResponse.status, apiResponse.statusText);
-          console.error("🔍 API Create - FormData Error data:", errorData);
-          throw new Error(
-            errorData.message || `Failed to create project: ${apiResponse.statusText}`
-          );
-        }
-
-        const project = (await apiResponse.json()) as Project;
-        console.log("🔍 API Create - FormData Success response:", project);
-        return project;
-        
-      } catch (imageError) {
-        console.error("🔍 API Create - FormData image processing error:", imageError);
-        console.log("🔍 API Create - Falling back to JSON without image");
-        
-        // Fall back to JSON without image
-        const { image: _, ...dataWithoutImage } = data;
-      }
-    }
-
-    // Regular JSON request (either no image or fallback)
+    // Prepare the request data
     const requestData: any = {
       name: data.name,
       description: data.description || null,
@@ -140,6 +80,12 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
       start_date: data.start_date || null,
       end_date: data.end_date || null,
     };
+
+    // Add image with correct parameter name if present
+    if (data.image && typeof data.image === "string") {
+      requestData.project_image = data.image; // Send base64 directly as project_image
+      console.log("🔍 API Create - Added project_image parameter with base64 data");
+    }
 
     console.log("🔍 API Create - Final JSON request data:", requestData);
 
@@ -154,7 +100,11 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("🔍 API Create - JSON Error response:", response.status, response.statusText);
+      console.error(
+        "🔍 API Create - JSON Error response:",
+        response.status,
+        response.statusText
+      );
       console.error("🔍 API Create - JSON Error data:", errorData);
       throw new Error(
         errorData.message || `Failed to create project: ${response.statusText}`
@@ -191,68 +141,7 @@ export async function updateProject(
       Object.entries(data).filter(([, value]) => value !== undefined)
     );
 
-    // If there's an image, try FormData approach with project_image parameter
-    if (cleanData.image && typeof cleanData.image === "string") {
-      console.log("🔍 API Update - Processing image with FormData");
-      console.log("🔍 API Update - Image data length:", cleanData.image.length);
-      console.log("🔍 API Update - Image starts with:", cleanData.image.substring(0, 50));
-
-      try {
-        // Convert base64 to blob
-        const base64Data = cleanData.image;
-        const response = await fetch(base64Data);
-        const blob = await response.blob();
-        
-        console.log("🔍 API Update - Blob created, size:", blob.size, "type:", blob.type);
-
-        // Create FormData
-        const formData = new FormData();
-        
-        // Add all non-image fields to FormData
-        Object.entries(cleanData).forEach(([key, value]) => {
-          if (key !== "image" && value !== null && value !== undefined) {
-            formData.append(key, value.toString());
-          }
-        });
-
-        // Add image with correct parameter name
-        formData.append("project_image", blob, "project-image.jpg");
-        
-        console.log("🔍 API Update - FormData created with project_image parameter");
-
-        const apiResponse = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
-          method: "PATCH",
-          headers: {
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            // Don't set Content-Type for FormData, let browser set it with boundary
-          },
-          body: formData,
-        });
-
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json().catch(() => ({}));
-          console.error("🔍 API Update - FormData Error response:", apiResponse.status, apiResponse.statusText);
-          console.error("🔍 API Update - FormData Error data:", errorData);
-          
-          throw new Error(
-            errorData.message || `Failed to update project: ${apiResponse.statusText}`
-          );
-        }
-
-        const project = (await apiResponse.json()) as Project;
-        console.log("🔍 API Update - FormData Success response:", project);
-        return project;
-        
-      } catch (imageError) {
-        console.error("🔍 API Update - FormData image processing error:", imageError);
-        console.log("🔍 API Update - Falling back to JSON without image");
-        
-        // Fall back to JSON without image
-        delete cleanData.image;
-      }
-    }
-
-    // Regular JSON request (either no image or fallback)
+    // Prepare the request data
     const requestData: any = {
       name: cleanData.name,
       description: cleanData.description || null,
@@ -262,6 +151,12 @@ export async function updateProject(
       end_date: cleanData.end_date || null,
       modified_at: Date.now(),
     };
+
+    // Add image with correct parameter name if present
+    if (cleanData.image && typeof cleanData.image === "string") {
+      requestData.project_image = cleanData.image; // Send base64 directly as project_image
+      console.log("🔍 API Update - Added project_image parameter with base64 data");
+    }
 
     console.log("🔍 API Update - Final JSON request data:", requestData);
 
