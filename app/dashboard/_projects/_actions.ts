@@ -68,24 +68,97 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
   try {
     const authToken = await getAuthToken();
 
-    const response = await fetch(`${XANO_BASE_URL}/projects`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
-      body: JSON.stringify(data),
-    });
+    console.log("🔍 API Create - Data being sent:", data);
+    console.log("🔍 API Create - Has image:", !!data.image);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to create project: ${response.statusText}`
-      );
+    // If there's an image, use FormData
+    if (data.image && typeof data.image === "string") {
+      const formData = new FormData();
+      
+      // Add all non-image fields to FormData
+      Object.entries(data).forEach(([key, value]) => {
+        if (key !== 'image' && value !== null && value !== undefined) {
+          formData.append(key, value.toString());
+        }
+      });
+
+      // Convert base64 to blob and add to FormData
+      try {
+        const base64Data = data.image;
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+        formData.append('image', blob, 'project-image.jpg');
+        
+        console.log("🔍 API Create - Using FormData with image blob");
+        
+        const apiResponse = await fetch(`${XANO_BASE_URL}/projects`, {
+          method: "POST",
+          headers: {
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            // Don't set Content-Type for FormData, let browser set it with boundary
+          },
+          body: formData,
+        });
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => ({}));
+          console.error("🔍 API Create - Error response:", apiResponse.status, apiResponse.statusText);
+          console.error("🔍 API Create - Error data:", errorData);
+          throw new Error(
+            errorData.message || `Failed to create project: ${apiResponse.statusText}`
+          );
+        }
+
+        const project = (await apiResponse.json()) as Project;
+        console.log("🔍 API Create - Success response:", project);
+        return project;
+        
+      } catch (imageError) {
+        console.error("🔍 API Create - Image processing error:", imageError);
+        // Fall back to regular JSON request without image
+        const { image: _, ...dataWithoutImage } = data;
+        console.log("🔍 API Create - Falling back to JSON without image");
+        
+        const response = await fetch(`${XANO_BASE_URL}/projects`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify(dataWithoutImage),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.message || `Failed to create project: ${response.statusText}`
+          );
+        }
+
+        const project = (await response.json()) as Project;
+        return project;
+      }
+    } else {
+      // Regular JSON request (no image)
+      const response = await fetch(`${XANO_BASE_URL}/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to create project: ${response.statusText}`
+        );
+      }
+
+      const project = (await response.json()) as Project;
+      return project;
     }
-
-    const project = (await response.json()) as Project;
-    return project;
   } catch (error: any) {
     throw new Error(error.message || "Failed to create project");
   }
@@ -102,14 +175,9 @@ export async function updateProject(
     console.log("🔍 API Update - Project ID:", id);
     console.log("🔍 API Update - Data being sent:", data);
     console.log("🔍 API Update - Has image:", !!data.image);
-    if (data.image) {
-      console.log("🔍 API Update - Image data length:", data.image.length);
-      console.log("🔍 API Update - Image data type:", typeof data.image);
-      console.log("🔍 API Update - Image starts with:", data.image.substring(0, 20));
-    }
 
     // Validate project ID
-    if (!id || typeof id !== 'number') {
+    if (!id || typeof id !== "number") {
       throw new Error("Invalid project ID provided");
     }
 
@@ -118,17 +186,61 @@ export async function updateProject(
       Object.entries(data).filter(([, value]) => value !== undefined)
     );
 
-    // Ensure image is properly formatted if present
-    if (cleanData.image && typeof cleanData.image === 'string') {
-      // Validate that it's a proper data URL
-      if (!cleanData.image.startsWith('data:')) {
-        console.warn("🔍 API Update - Image data doesn't start with 'data:', removing it");
+    console.log("🔍 API Update - Clean data:", cleanData);
+
+    // If there's an image, we need to handle it differently
+    if (cleanData.image && typeof cleanData.image === "string") {
+      // For XANO, we might need to use FormData for image uploads
+      const formData = new FormData();
+      
+      // Add all non-image fields to FormData
+      Object.entries(cleanData).forEach(([key, value]) => {
+        if (key !== 'image' && value !== null && value !== undefined) {
+          formData.append(key, value.toString());
+        }
+      });
+
+      // Convert base64 to blob and add to FormData
+      try {
+        const base64Data = cleanData.image;
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+        formData.append('image', blob, 'project-image.jpg');
+        
+        console.log("🔍 API Update - Using FormData with image blob");
+        
+        const apiResponse = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
+          method: "PATCH",
+          headers: {
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            // Don't set Content-Type for FormData, let browser set it with boundary
+          },
+          body: formData,
+        });
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => ({}));
+          console.error("🔍 API Update - Error response:", apiResponse.status, apiResponse.statusText);
+          console.error("🔍 API Update - Error data:", errorData);
+          
+          throw new Error(
+            errorData.message || `Failed to update project: ${apiResponse.statusText}`
+          );
+        }
+
+        const project = (await apiResponse.json()) as Project;
+        console.log("🔍 API Update - Success response:", project);
+        return project;
+        
+      } catch (imageError) {
+        console.error("🔍 API Update - Image processing error:", imageError);
+        // Fall back to regular JSON request without image
         delete cleanData.image;
+        console.log("🔍 API Update - Falling back to JSON without image");
       }
     }
 
-    console.log("🔍 API Update - Clean data:", cleanData);
-
+    // Regular JSON request (either no image or fallback)
     const response = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
       method: "PATCH",
       headers: {
@@ -146,19 +258,23 @@ export async function updateProject(
         response.statusText
       );
       console.error("🔍 API Update - Error data:", errorData);
-      
+
       // Provide more specific error messages
       if (response.status === 400) {
         throw new Error(
-          errorData.message || "Invalid data provided. Please check your input and try again."
+          errorData.message ||
+            "Invalid data provided. Please check your input and try again."
         );
       } else if (response.status === 404) {
         throw new Error("Project not found. It may have been deleted.");
       } else if (response.status === 413) {
-        throw new Error("Image file is too large. Please choose a smaller image.");
+        throw new Error(
+          "Image file is too large. Please choose a smaller image."
+        );
       } else {
         throw new Error(
-          errorData.message || `Failed to update project: ${response.statusText}`
+          errorData.message ||
+            `Failed to update project: ${response.statusText}`
         );
       }
     }
