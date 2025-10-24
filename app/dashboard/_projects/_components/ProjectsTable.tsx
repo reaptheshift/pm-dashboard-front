@@ -107,9 +107,29 @@ export function ProjectsTable({
 
   const fileToDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('File must be an image'));
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        reject(new Error('Image file is too large. Please choose an image smaller than 5MB.'));
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onload = () => {
+        const result = reader.result as string;
+        if (!result.startsWith('data:')) {
+          reject(new Error('Failed to convert file to data URL'));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file); // yields: data:<mime>;base64,<data>
     });
 
@@ -126,7 +146,7 @@ export function ProjectsTable({
         status: data.status || "active",
         start_date: data.startDate || null,
         end_date: data.endDate || null,
-        project_image: projectImageBase64,
+        image: projectImageBase64,
       });
 
       // Show success toast
@@ -166,9 +186,30 @@ export function ProjectsTable({
     if (!selectedProject) return;
 
     try {
-      const projectImageBase64 = data.picture
-        ? await fileToDataUrl(data.picture)
-        : null;
+      console.log("🔍 Update data received:", data);
+      console.log("🔍 Has picture file:", !!data.picture);
+
+      let projectImageBase64 = null;
+      
+      if (data.picture) {
+        try {
+          projectImageBase64 = await fileToDataUrl(data.picture);
+          console.log("🔍 Image converted to base64:", !!projectImageBase64);
+          if (projectImageBase64) {
+            console.log("🔍 Base64 length:", projectImageBase64.length);
+            console.log(
+              "🔍 Base64 preview:",
+              projectImageBase64.substring(0, 50) + "..."
+            );
+          }
+        } catch (imageError: any) {
+          console.error("🔍 Image conversion error:", imageError);
+          toast.error("Image upload failed", {
+            description: imageError.message || "There was an error processing the image",
+          });
+          throw imageError; // Re-throw to prevent the update from proceeding
+        }
+      }
 
       // Build update data object
       const updateData: any = {
@@ -181,11 +222,15 @@ export function ProjectsTable({
         modified_at: Date.now(), // Add current timestamp
       };
 
-      // Only include project_image if there's a new image to upload
+      // Only include image if there's a new image to upload
       if (projectImageBase64) {
-        updateData.project_image = projectImageBase64;
+        updateData.image = projectImageBase64;
+        console.log("🔍 Added image to update data");
+      } else {
+        console.log("🔍 No new image, skipping image field");
       }
 
+      console.log("🔍 Final update data:", updateData);
       await updateProject(selectedProject.id, updateData);
 
       // Show success toast
@@ -198,10 +243,27 @@ export function ProjectsTable({
         await onRefreshProjects();
       }
     } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to update project", {
-        description: err.message || "There was an error updating the project",
-      });
+      console.error("🔍 Update project error:", err);
+      
+      // Show more specific error messages
+      if (err.message.includes('Image file is too large')) {
+        toast.error("Image too large", {
+          description: "Please choose an image smaller than 5MB",
+        });
+      } else if (err.message.includes('File must be an image')) {
+        toast.error("Invalid file type", {
+          description: "Please select a valid image file",
+        });
+      } else if (err.message.includes('Invalid project ID')) {
+        toast.error("Project not found", {
+          description: "The project may have been deleted",
+        });
+      } else {
+        toast.error("Failed to update project", {
+          description: err.message || "There was an error updating the project",
+        });
+      }
+      
       // Re-throw the error so EditProjectDialog can handle it
       throw err;
     }
