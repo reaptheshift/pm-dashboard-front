@@ -71,94 +71,45 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
     console.log("🔍 API Create - Data being sent:", data);
     console.log("🔍 API Create - Has image:", !!data.image);
 
-    // If there's an image, use FormData
+    // Prepare the data with correct parameter name
+    const requestData: any = {
+      name: data.name,
+      description: data.description || null,
+      location: data.location || null,
+      status: data.status || "active",
+      start_date: data.start_date || null,
+      end_date: data.end_date || null,
+    };
+
+    // Add image with correct parameter name if present
     if (data.image && typeof data.image === "string") {
-      const formData = new FormData();
-      
-      // Add all non-image fields to FormData
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'image' && value !== null && value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
-      // Convert base64 to blob and add to FormData
-      try {
-        const base64Data = data.image;
-        const response = await fetch(base64Data);
-        const blob = await response.blob();
-        formData.append('image', blob, 'project-image.jpg');
-        
-        console.log("🔍 API Create - Using FormData with image blob");
-        
-        const apiResponse = await fetch(`${XANO_BASE_URL}/projects`, {
-          method: "POST",
-          headers: {
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            // Don't set Content-Type for FormData, let browser set it with boundary
-          },
-          body: formData,
-        });
-
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json().catch(() => ({}));
-          console.error("🔍 API Create - Error response:", apiResponse.status, apiResponse.statusText);
-          console.error("🔍 API Create - Error data:", errorData);
-          throw new Error(
-            errorData.message || `Failed to create project: ${apiResponse.statusText}`
-          );
-        }
-
-        const project = (await apiResponse.json()) as Project;
-        console.log("🔍 API Create - Success response:", project);
-        return project;
-        
-      } catch (imageError) {
-        console.error("🔍 API Create - Image processing error:", imageError);
-        // Fall back to regular JSON request without image
-        const { image: _, ...dataWithoutImage } = data;
-        console.log("🔍 API Create - Falling back to JSON without image");
-        
-        const response = await fetch(`${XANO_BASE_URL}/projects`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          },
-          body: JSON.stringify(dataWithoutImage),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.message || `Failed to create project: ${response.statusText}`
-          );
-        }
-
-        const project = (await response.json()) as Project;
-        return project;
-      }
-    } else {
-      // Regular JSON request (no image)
-      const response = await fetch(`${XANO_BASE_URL}/projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `Failed to create project: ${response.statusText}`
-        );
-      }
-
-      const project = (await response.json()) as Project;
-      return project;
+      requestData.project_image = data.image; // Use project_image parameter
+      console.log("🔍 API Create - Added project_image parameter");
     }
+
+    console.log("🔍 API Create - Final request data:", requestData);
+
+    const response = await fetch(`${XANO_BASE_URL}/projects`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("🔍 API Create - Error response:", response.status, response.statusText);
+      console.error("🔍 API Create - Error data:", errorData);
+      throw new Error(
+        errorData.message || `Failed to create project: ${response.statusText}`
+      );
+    }
+
+    const project = (await response.json()) as Project;
+    console.log("🔍 API Create - Success response:", project);
+    return project;
   } catch (error: any) {
     throw new Error(error.message || "Failed to create project");
   }
@@ -186,68 +137,32 @@ export async function updateProject(
       Object.entries(data).filter(([, value]) => value !== undefined)
     );
 
-    console.log("🔍 API Update - Clean data:", cleanData);
+    // Prepare the request data with correct parameter name
+    const requestData: any = {
+      name: cleanData.name,
+      description: cleanData.description || null,
+      location: cleanData.location || null,
+      status: cleanData.status || "active",
+      start_date: cleanData.start_date || null,
+      end_date: cleanData.end_date || null,
+      modified_at: Date.now(),
+    };
 
-    // If there's an image, we need to handle it differently
+    // Add image with correct parameter name if present
     if (cleanData.image && typeof cleanData.image === "string") {
-      // For XANO, we might need to use FormData for image uploads
-      const formData = new FormData();
-      
-      // Add all non-image fields to FormData
-      Object.entries(cleanData).forEach(([key, value]) => {
-        if (key !== 'image' && value !== null && value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
-      // Convert base64 to blob and add to FormData
-      try {
-        const base64Data = cleanData.image;
-        const response = await fetch(base64Data);
-        const blob = await response.blob();
-        formData.append('image', blob, 'project-image.jpg');
-        
-        console.log("🔍 API Update - Using FormData with image blob");
-        
-        const apiResponse = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
-          method: "PATCH",
-          headers: {
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            // Don't set Content-Type for FormData, let browser set it with boundary
-          },
-          body: formData,
-        });
-
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json().catch(() => ({}));
-          console.error("🔍 API Update - Error response:", apiResponse.status, apiResponse.statusText);
-          console.error("🔍 API Update - Error data:", errorData);
-          
-          throw new Error(
-            errorData.message || `Failed to update project: ${apiResponse.statusText}`
-          );
-        }
-
-        const project = (await apiResponse.json()) as Project;
-        console.log("🔍 API Update - Success response:", project);
-        return project;
-        
-      } catch (imageError) {
-        console.error("🔍 API Update - Image processing error:", imageError);
-        // Fall back to regular JSON request without image
-        delete cleanData.image;
-        console.log("🔍 API Update - Falling back to JSON without image");
-      }
+      requestData.project_image = cleanData.image; // Use project_image parameter
+      console.log("🔍 API Update - Added project_image parameter");
     }
 
-    // Regular JSON request (either no image or fallback)
+    console.log("🔍 API Update - Final request data:", requestData);
+
     const response = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
-      body: JSON.stringify(cleanData),
+      body: JSON.stringify(requestData),
     });
 
     if (!response.ok) {
