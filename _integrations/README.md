@@ -5,7 +5,9 @@ This module contains the Integrations page component for the PocketBoss dashboar
 ## Components
 
 ### IntegrationsContent
+
 The main component that renders the integrations page with:
+
 - Header section with title and "Connect Project" button
 - Grid of integration cards
 - Integration status section
@@ -22,13 +24,14 @@ The main component that renders the integrations page with:
 ## Assets
 
 The component uses images downloaded from the Figma design:
+
 - `integration-card-1.png`: Project Management Integration card
 - `integration-card-2.svg`: Document Management System card
 
 ## Usage
 
 ```tsx
-import { IntegrationsContent } from './_integrations';
+import { IntegrationsContent } from "./_integrations";
 
 export default function IntegrationsPage() {
   return <IntegrationsContent />;
@@ -42,6 +45,7 @@ Based on Figma design: [Pocketboss - Cursor](https://www.figma.com/design/mql7d2
 ## Styling
 
 Uses Tailwind CSS classes consistent with the existing design system:
+
 - Gray color palette (gray-50, gray-200, gray-900, etc.)
 - Consistent spacing and typography
 - Hover effects and transitions

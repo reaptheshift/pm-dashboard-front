@@ -156,7 +156,7 @@ export function UsersTable({
                     <Badge
                       className={`${getRoleBadgeColor(
                         user.role
-                      )} hover:bg-current`}
+                      )}`}
                     >
                       {formatRoleDisplay(user.role)}
                     </Badge>
@@ -165,7 +165,7 @@ export function UsersTable({
                     <Badge
                       className={`${getStatusBadgeColor(
                         user.status
-                      )} hover:bg-current`}
+                      )}`}
                     >
                       <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
                       {user.status}

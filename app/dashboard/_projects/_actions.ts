@@ -84,7 +84,9 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
     // Add image with correct parameter name if present
     if (data.image && typeof data.image === "string") {
       requestData.project_image = data.image; // Send base64 directly as project_image
-      console.log("🔍 API Create - Added project_image parameter with base64 data");
+      console.log(
+        "🔍 API Create - Added project_image parameter with base64 data"
+      );
     }
 
     console.log("🔍 API Create - Final JSON request data:", requestData);
@@ -155,7 +157,9 @@ export async function updateProject(
     // Add image with correct parameter name if present
     if (cleanData.image && typeof cleanData.image === "string") {
       requestData.project_image = cleanData.image; // Send base64 directly as project_image
-      console.log("🔍 API Update - Added project_image parameter with base64 data");
+      console.log(
+        "🔍 API Update - Added project_image parameter with base64 data"
+      );
     }
 
     console.log("🔍 API Update - Final JSON request data:", requestData);

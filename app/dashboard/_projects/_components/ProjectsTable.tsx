@@ -108,28 +108,32 @@ export function ProjectsTable({
   const fileToDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        reject(new Error('File must be an image'));
+      if (!file.type.startsWith("image/")) {
+        reject(new Error("File must be an image"));
         return;
       }
 
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        reject(new Error('Image file is too large. Please choose an image smaller than 5MB.'));
+        reject(
+          new Error(
+            "Image file is too large. Please choose an image smaller than 5MB."
+          )
+        );
         return;
       }
 
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        if (!result.startsWith('data:')) {
-          reject(new Error('Failed to convert file to data URL'));
+        if (!result.startsWith("data:")) {
+          reject(new Error("Failed to convert file to data URL"));
           return;
         }
         resolve(result);
       };
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file); // yields: data:<mime>;base64,<data>
     });
 
@@ -190,7 +194,7 @@ export function ProjectsTable({
       console.log("🔍 Has picture file:", !!data.picture);
 
       let projectImageBase64 = null;
-      
+
       if (data.picture) {
         try {
           projectImageBase64 = await fileToDataUrl(data.picture);
@@ -205,7 +209,8 @@ export function ProjectsTable({
         } catch (imageError: any) {
           console.error("🔍 Image conversion error:", imageError);
           toast.error("Image upload failed", {
-            description: imageError.message || "There was an error processing the image",
+            description:
+              imageError.message || "There was an error processing the image",
           });
           throw imageError; // Re-throw to prevent the update from proceeding
         }
@@ -244,17 +249,17 @@ export function ProjectsTable({
       }
     } catch (err: any) {
       console.error("🔍 Update project error:", err);
-      
+
       // Show more specific error messages
-      if (err.message.includes('Image file is too large')) {
+      if (err.message.includes("Image file is too large")) {
         toast.error("Image too large", {
           description: "Please choose an image smaller than 5MB",
         });
-      } else if (err.message.includes('File must be an image')) {
+      } else if (err.message.includes("File must be an image")) {
         toast.error("Invalid file type", {
           description: "Please select a valid image file",
         });
-      } else if (err.message.includes('Invalid project ID')) {
+      } else if (err.message.includes("Invalid project ID")) {
         toast.error("Project not found", {
           description: "The project may have been deleted",
         });
@@ -263,7 +268,7 @@ export function ProjectsTable({
           description: err.message || "There was an error updating the project",
         });
       }
-      
+
       // Re-throw the error so EditProjectDialog can handle it
       throw err;
     }

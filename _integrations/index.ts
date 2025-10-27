@@ -1,2 +1,2 @@
-export { IntegrationsContent } from './IntegrationsContent';
-export { default } from './IntegrationsContent';
+export { IntegrationsContent } from "./IntegrationsContent";
+export { default } from "./IntegrationsContent";

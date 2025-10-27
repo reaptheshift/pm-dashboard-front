@@ -26,7 +26,12 @@ import { FolderStructureDisplay } from "./folderStructure";
 import { UploadProgress } from "./uploadProgress";
 import { useFileManager } from "./useFileManager";
 import { X } from "lucide-react";
-import { backendAPI } from "@/lib/backend-api";
+import { uploadDocument, pollFileStatus } from "../../_documents/_actions";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import { getProjects } from "../../_projects/_actions";
 
 interface UploadDocumentModalProps {
   open: boolean;
@@ -37,7 +42,38 @@ export function UploadDocumentModalOptimized({
   open,
   onOpenChange,
 }: UploadDocumentModalProps) {
-  const [selectedProject, setSelectedProject] = React.useState<string>("");
+  const [selectedProjects, setSelectedProjects] = React.useState<string[]>([]);
+  const [projectOptions, setProjectOptions] = React.useState<
+    MultiSelectOption[]
+  >([]);
+  const [isLoadingProjects, setIsLoadingProjects] = React.useState(false);
+
+  // Fetch projects when modal opens and reset state when it closes
+  React.useEffect(() => {
+    if (open) {
+      fetchProjects();
+    } else {
+      // Reset selected projects when modal closes
+      setSelectedProjects([]);
+    }
+  }, [open]);
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoadingProjects(true);
+      const projects = await getProjects();
+      const options: MultiSelectOption[] = projects.map((project) => ({
+        label: project.name,
+        value: project.id.toString(),
+      }));
+      setProjectOptions(options);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      setProjectOptions([]);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
 
   const {
     selectedFiles,
@@ -132,7 +168,7 @@ export function UploadDocumentModalOptimized({
     const hasCurrentFiles = selectedFiles.length > 0 || folderStructure;
     const hasFiles = hasAccumulatedFiles || hasCurrentFiles;
 
-    if (!hasFiles || !selectedProject) return;
+    if (!hasFiles || selectedProjects.length === 0) return;
 
     setIsUploading(true);
 
@@ -166,7 +202,7 @@ export function UploadDocumentModalOptimized({
       // Upload files to backend
       for (let i = 0; i < initialUploadItems.length; i++) {
         const item = initialUploadItems[i];
-        
+
         try {
           // Update status to uploading
           setUploadingFiles((prev) => {
@@ -175,12 +211,17 @@ export function UploadDocumentModalOptimized({
             return updated;
           });
 
+          // Create FormData for upload
+          const formData = new FormData();
+          formData.append("file", item.file);
+          if (selectedProjects.length > 0) {
+            // Convert string IDs to integers and send as JSON array
+            const projects = selectedProjects.map((id) => parseInt(id, 10));
+            formData.append("projects", JSON.stringify(projects));
+          }
+
           // Upload file to backend
-          const result = await backendAPI.uploadFile(
-            item.file,
-            selectedProject,
-            'user-id' // TODO: Get from auth context
-          );
+          const result = await uploadDocument(formData);
 
           // Update with file ID and start polling
           setUploadingFiles((prev) => {
@@ -191,60 +232,68 @@ export function UploadDocumentModalOptimized({
 
           // Poll for status updates
           try {
-            await backendAPI.pollFileStatus(result.fileId, (status) => {
-              console.log('📊 Status update received:', status);
-              setUploadingFiles((prev) => {
-                const updated = [...prev];
-                const itemIndex = updated.findIndex(u => u.fileId === result.fileId);
-                if (itemIndex !== -1) {
-                  // Handle different status values and progress
-                  const normalizedStatus = status.status?.toLowerCase();
-                  let progress = 0;
-                  let statusText = 'uploading';
-                  
-                  if (normalizedStatus === 'uploaded') {
-                    progress = 25;
-                    statusText = 'uploaded';
-                  } else if (normalizedStatus === 'processing') {
-                    progress = 50;
-                    statusText = 'processing';
-                  } else if (normalizedStatus === 'completed') {
-                    progress = 100;
-                    statusText = 'completed';
-                  } else if (normalizedStatus === 'failed') {
-                    progress = 0;
-                    statusText = 'error';
-                  } else {
-                    // Use progress from backend if available
-                    progress = status.progress || 75;
-                    statusText = 'uploading';
-                  }
-                  
-                  updated[itemIndex] = {
-                    ...updated[itemIndex],
-                    progress,
-                    status: statusText as "uploading" | "uploaded" | "processing" | "completed" | "error"
-                  };
-                }
-                return updated;
-              });
-            });
-          } catch (pollError) {
-            console.error('Polling error:', pollError);
+            const finalStatus = await pollFileStatus(result.fileId);
+
+            console.log("📊 Final status received:", finalStatus);
+
+            const normalizedStatus = finalStatus.status?.toLowerCase();
+            let progress = 0;
+            let statusText = "uploading";
+
+            if (normalizedStatus === "uploaded") {
+              progress = 25;
+              statusText = "uploaded";
+            } else if (normalizedStatus === "processing") {
+              progress = 50;
+              statusText = "processing";
+            } else if (normalizedStatus === "completed") {
+              progress = 100;
+              statusText = "completed";
+            } else if (normalizedStatus === "failed") {
+              progress = 0;
+              statusText = "error";
+            } else {
+              progress = finalStatus.progress || 75;
+              statusText = "uploading";
+            }
+
             setUploadingFiles((prev) => {
               const updated = [...prev];
-              const itemIndex = updated.findIndex(u => u.fileId === result.fileId);
+              const itemIndex = updated.findIndex(
+                (u) => u.fileId === result.fileId
+              );
               if (itemIndex !== -1) {
-                updated[itemIndex] = { ...updated[itemIndex], status: 'error' };
+                updated[itemIndex] = {
+                  ...updated[itemIndex],
+                  progress,
+                  status: statusText as
+                    | "uploading"
+                    | "uploaded"
+                    | "processing"
+                    | "completed"
+                    | "error",
+                };
+              }
+              return updated;
+            });
+          } catch (pollError) {
+            console.error("Polling error:", pollError);
+            setUploadingFiles((prev) => {
+              const updated = [...prev];
+              const itemIndex = updated.findIndex(
+                (u) => u.fileId === result.fileId
+              );
+              if (itemIndex !== -1) {
+                updated[itemIndex] = { ...updated[itemIndex], status: "error" };
               }
               return updated;
             });
           }
         } catch (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error("Upload error:", uploadError);
           setUploadingFiles((prev) => {
             const updated = [...prev];
-            updated[i] = { ...updated[i], status: 'error' };
+            updated[i] = { ...updated[i], status: "error" };
             return updated;
           });
         }
@@ -256,9 +305,8 @@ export function UploadDocumentModalOptimized({
         setUploadingFiles([]);
         onOpenChange(false);
       }, 2000);
-
     } catch (error) {
-      console.error('Upload process error:', error);
+      console.error("Upload process error:", error);
       setIsUploading(false);
       setUploadingFiles([]);
     }
@@ -455,18 +503,26 @@ export function UploadDocumentModalOptimized({
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
-              Link to project
+              Link to projects <span className="text-red-500">*</span>
             </label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project1">Project Alpha</SelectItem>
-                <SelectItem value="project2">Project Beta</SelectItem>
-                <SelectItem value="project3">Project Gamma</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={projectOptions}
+              value={selectedProjects}
+              onValueChange={setSelectedProjects}
+              placeholder={
+                isLoadingProjects
+                  ? "Loading projects..."
+                  : projectOptions.length === 0
+                  ? "No projects available"
+                  : "Select projects"
+              }
+              disabled={isLoadingProjects || projectOptions.length === 0}
+              maxCount={2}
+              searchable={true}
+            />
+            <p className="text-xs text-gray-500">
+              Select one or more projects to link this document to.
+            </p>
           </div>
         </div>
 
@@ -488,7 +544,7 @@ export function UploadDocumentModalOptimized({
                   !accumulatedFolderStructure &&
                   selectedFiles.length === 0 &&
                   !folderStructure) ||
-                !selectedProject ||
+                selectedProjects.length === 0 ||
                 isUploading
               }
               className="px-5 py-2.5 bg-gray-950 hover:bg-gray-800 text-white"

@@ -27,6 +27,7 @@ interface User {
   projects: Array<{
     id: string;
     name: string;
+    relationId?: number;
   }>;
   lastLogin: string;
   joinedDate: string;
@@ -86,10 +87,11 @@ export function UserContent({
               email: apiUser.email || "No email",
               role: apiUser.role || "field_worker",
               status: "Active" as const, // Default status for now
-              projects: Array.isArray(apiUser.projects)
-                ? apiUser.projects.map((project) => ({
-                    id: project?.id?.toString() || "unknown",
-                    name: project?.name || "Unnamed Project",
+              projects: Array.isArray(apiUser.projects_relations)
+                ? apiUser.projects_relations.map((relation) => ({
+                    id: relation.project?.id?.toString() || "unknown",
+                    name: relation.project?.name || "Unnamed Project",
+                    relationId: relation.relation_id,
                   }))
                 : [],
               lastLogin: apiUser.last_login
@@ -144,14 +146,23 @@ export function UserContent({
     try {
       setIsCreatingUser(true);
 
+      // Convert project IDs from string array to integer array
+      const projects = data.projectIds
+        ? data.projectIds.map((id: string) => parseInt(id, 10))
+        : [];
+
       // Call the createFieldWorker server action
-      const newUser = await createFieldWorker({
+      const response = await createFieldWorker({
         name: data.fullName,
         email: data.email,
         role: data.role,
         password: data.password,
-        projectIds: data.projectIds || [],
+        projects,
       });
+
+      // Extract user and projects from response
+      const newUser = response.user;
+      const userProjects = response.projects;
 
       // Transform the new user to match our User interface
       const transformedUser: User = {
@@ -160,10 +171,11 @@ export function UserContent({
         email: newUser.email || "No email",
         role: newUser.role || "field_worker",
         status: "Active" as const,
-        projects: Array.isArray(newUser.projects)
-          ? newUser.projects.map((project) => ({
+        projects: Array.isArray(userProjects)
+          ? userProjects.map((project, index) => ({
               id: project?.id?.toString() || "unknown",
               name: project?.name || "Unnamed Project",
+              relationId: index + 1, // Temporary relation_id, will be updated on refresh
             }))
           : [],
         lastLogin: newUser.last_login
@@ -205,10 +217,11 @@ export function UserContent({
         email: updatedUser.email || "No email",
         role: updatedUser.role || "field_worker",
         status: "Active" as const,
-        projects: Array.isArray(updatedUser.projects)
-          ? updatedUser.projects.map((project) => ({
-              id: project?.id?.toString() || "unknown",
-              name: project?.name || "Unnamed Project",
+        projects: Array.isArray(updatedUser.projects_relations)
+          ? updatedUser.projects_relations.map((relation) => ({
+              id: relation.project?.id?.toString() || "unknown",
+              name: relation.project?.name || "Unnamed Project",
+              relationId: relation.relation_id,
             }))
           : [],
         lastLogin: updatedUser.last_login

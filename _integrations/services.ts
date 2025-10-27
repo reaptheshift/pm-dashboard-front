@@ -1,4 +1,4 @@
-import { Integration, IntegrationStatus } from './types';
+import { Integration, IntegrationStatus } from "./types";
 
 // Mock integration data - replace with actual API calls
 export const mockIntegrations: Integration[] = [
@@ -37,13 +37,13 @@ export class IntegrationService {
     // Simulate API call
     return new Promise((resolve) => {
       setTimeout(() => {
-        const integration = mockIntegrations.find(i => i.id === id);
+        const integration = mockIntegrations.find((i) => i.id === id);
         if (integration) {
           integration.connected = true;
           integration.lastSync = new Date().toISOString();
           resolve(integration);
         }
-        throw new Error('Integration not found');
+        throw new Error("Integration not found");
       }, 1000);
     });
   }
@@ -52,13 +52,13 @@ export class IntegrationService {
     // Simulate API call
     return new Promise((resolve) => {
       setTimeout(() => {
-        const integration = mockIntegrations.find(i => i.id === id);
+        const integration = mockIntegrations.find((i) => i.id === id);
         if (integration) {
           integration.connected = false;
           integration.lastSync = undefined;
           resolve(integration);
         }
-        throw new Error('Integration not found');
+        throw new Error("Integration not found");
       }, 1000);
     });
   }
@@ -67,8 +67,8 @@ export class IntegrationService {
     const integrations = await this.getIntegrations();
     return {
       total: integrations.length,
-      connected: integrations.filter(i => i.connected).length,
-      disconnected: integrations.filter(i => !i.connected).length,
+      connected: integrations.filter((i) => i.connected).length,
+      disconnected: integrations.filter((i) => !i.connected).length,
     };
   }
 }

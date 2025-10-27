@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { backendAPI, Document } from "@/lib/backend-api";
+import { getDocuments, deleteDocument as deleteDoc } from "./_actions";
+import type { Document } from "./_actions";
 
 export function DocumentsContent() {
   const { hash } = useHash("#Documents");
@@ -30,22 +31,21 @@ export function DocumentsContent() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  // Load documents on mount only - with S3 sync
+  // Load documents on mount
   useEffect(() => {
-    loadDocuments(true, true);
+    loadDocuments();
   }, []);
 
-  const loadDocuments = async (showLoading = true, syncWithS3 = false) => {
+  const loadDocuments = async (showLoading = true) => {
     try {
       if (showLoading) {
         setLoading(true);
       }
       setError(null);
-      const response = await backendAPI.getDocuments(syncWithS3);
+      const response = await getDocuments();
       setDocuments(response.documents);
     } catch (err) {
       setError("Failed to load documents. Please try again.");
-      // Fallback to sample data for demo
       setDocuments([]);
     } finally {
       if (showLoading) {
@@ -54,15 +54,15 @@ export function DocumentsContent() {
     }
   };
 
-  // Manual refresh function - always syncs with S3
+  // Manual refresh function
   const handleRefresh = () => {
-    loadDocuments(true, true);
+    loadDocuments();
   };
 
   // Delete document function
   const deleteDocument = async (fileId: string, fileName: string) => {
     try {
-      await backendAPI.deleteFile(fileId);
+      await deleteDoc(fileId);
 
       // Remove from local state immediately for better UX
       setDocuments((prev) => prev.filter((doc) => doc.fileId !== fileId));
@@ -188,9 +188,9 @@ export function DocumentsContent() {
           <div className="flex items-center gap-3">
             {/* Manual Refresh Button */}
             <button
-              onClick={() => loadDocuments(true, true)}
+              onClick={() => loadDocuments(true)}
               className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
-              title="Refresh documents list and sync with S3"
+              title="Refresh documents list"
             >
               <svg
                 className="w-5 h-5"
@@ -455,7 +455,7 @@ export function DocumentsContent() {
               <div className="text-center">
                 <p className="text-red-600 mb-4">{error}</p>
                 <button
-                  onClick={() => loadDocuments(true, true)}
+                  onClick={() => loadDocuments(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   Retry

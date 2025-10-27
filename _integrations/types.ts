@@ -16,7 +16,7 @@ export interface IntegrationStatus {
 }
 
 export interface IntegrationAction {
-  type: 'CONNECT' | 'DISCONNECT' | 'SYNC' | 'CONFIGURE';
+  type: "CONNECT" | "DISCONNECT" | "SYNC" | "CONFIGURE";
   integrationId: number;
   payload?: any;
 }
