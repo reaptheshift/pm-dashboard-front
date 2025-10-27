@@ -163,7 +163,6 @@ export function ProjectsTable({
         await onRefreshProjects();
       }
     } catch (err: any) {
-      console.error(err);
       toast.error("Failed to create project", {
         description: err.message || "There was an error creating the project",
       });
@@ -190,24 +189,12 @@ export function ProjectsTable({
     if (!selectedProject) return;
 
     try {
-      console.log("🔍 Update data received:", data);
-      console.log("🔍 Has picture file:", !!data.picture);
-
       let projectImageBase64 = null;
 
       if (data.picture) {
         try {
           projectImageBase64 = await fileToDataUrl(data.picture);
-          console.log("🔍 Image converted to base64:", !!projectImageBase64);
-          if (projectImageBase64) {
-            console.log("🔍 Base64 length:", projectImageBase64.length);
-            console.log(
-              "🔍 Base64 preview:",
-              projectImageBase64.substring(0, 50) + "..."
-            );
-          }
         } catch (imageError: any) {
-          console.error("🔍 Image conversion error:", imageError);
           toast.error("Image upload failed", {
             description:
               imageError.message || "There was an error processing the image",
@@ -230,12 +217,8 @@ export function ProjectsTable({
       // Only include image if there's a new image to upload
       if (projectImageBase64) {
         updateData.image = projectImageBase64;
-        console.log("🔍 Added image to update data");
-      } else {
-        console.log("🔍 No new image, skipping image field");
       }
 
-      console.log("🔍 Final update data:", updateData);
       await updateProject(selectedProject.id, updateData);
 
       // Show success toast
@@ -248,8 +231,6 @@ export function ProjectsTable({
         await onRefreshProjects();
       }
     } catch (err: any) {
-      console.error("🔍 Update project error:", err);
-
       // Show more specific error messages
       if (err.message.includes("Image file is too large")) {
         toast.error("Image too large", {
@@ -290,7 +271,6 @@ export function ProjectsTable({
         await onRefreshProjects();
       }
     } catch (err: any) {
-      console.error(err);
       toast.error("Failed to delete project", {
         description: err.message || "There was an error deleting the project",
       });

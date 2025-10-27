@@ -68,9 +68,6 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
   try {
     const authToken = await getAuthToken();
 
-    console.log("🔍 API Create - Data being sent:", data);
-    console.log("🔍 API Create - Has image:", !!data.image);
-
     // Prepare the request data
     const requestData: any = {
       name: data.name,
@@ -84,12 +81,7 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
     // Add image with correct parameter name if present
     if (data.image && typeof data.image === "string") {
       requestData.project_image = data.image; // Send base64 directly as project_image
-      console.log(
-        "🔍 API Create - Added project_image parameter with base64 data"
-      );
     }
-
-    console.log("🔍 API Create - Final JSON request data:", requestData);
 
     const response = await fetch(`${XANO_BASE_URL}/projects`, {
       method: "POST",
@@ -102,19 +94,12 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error(
-        "🔍 API Create - JSON Error response:",
-        response.status,
-        response.statusText
-      );
-      console.error("🔍 API Create - JSON Error data:", errorData);
       throw new Error(
         errorData.message || `Failed to create project: ${response.statusText}`
       );
     }
 
     const project = (await response.json()) as Project;
-    console.log("🔍 API Create - JSON Success response:", project);
     return project;
   } catch (error: any) {
     throw new Error(error.message || "Failed to create project");
@@ -128,10 +113,6 @@ export async function updateProject(
 ): Promise<Project> {
   try {
     const authToken = await getAuthToken();
-
-    console.log("🔍 API Update - Project ID:", id);
-    console.log("🔍 API Update - Data being sent:", data);
-    console.log("🔍 API Update - Has image:", !!data.image);
 
     // Validate project ID
     if (!id || typeof id !== "number") {
@@ -157,12 +138,7 @@ export async function updateProject(
     // Add image with correct parameter name if present
     if (cleanData.image && typeof cleanData.image === "string") {
       requestData.project_image = cleanData.image; // Send base64 directly as project_image
-      console.log(
-        "🔍 API Update - Added project_image parameter with base64 data"
-      );
     }
-
-    console.log("🔍 API Update - Final JSON request data:", requestData);
 
     const response = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
       method: "PATCH",
@@ -175,12 +151,6 @@ export async function updateProject(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error(
-        "🔍 API Update - JSON Error response:",
-        response.status,
-        response.statusText
-      );
-      console.error("🔍 API Update - JSON Error data:", errorData);
 
       // Provide more specific error messages
       if (response.status === 400) {
@@ -203,10 +173,8 @@ export async function updateProject(
     }
 
     const project = (await response.json()) as Project;
-    console.log("🔍 API Update - JSON Success response:", project);
     return project;
   } catch (error: any) {
-    console.error("🔍 API Update - Caught error:", error);
     throw new Error(error.message || "Failed to update project");
   }
 }

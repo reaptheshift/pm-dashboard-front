@@ -68,7 +68,6 @@ export function UploadDocumentModalOptimized({
       }));
       setProjectOptions(options);
     } catch (error) {
-      console.error("Failed to fetch projects:", error);
       setProjectOptions([]);
     } finally {
       setIsLoadingProjects(false);
@@ -234,8 +233,6 @@ export function UploadDocumentModalOptimized({
           try {
             const finalStatus = await pollFileStatus(result.fileId);
 
-            console.log("📊 Final status received:", finalStatus);
-
             const normalizedStatus = finalStatus.status?.toLowerCase();
             let progress = 0;
             let statusText = "uploading";
@@ -277,7 +274,6 @@ export function UploadDocumentModalOptimized({
               return updated;
             });
           } catch (pollError) {
-            console.error("Polling error:", pollError);
             setUploadingFiles((prev) => {
               const updated = [...prev];
               const itemIndex = updated.findIndex(
@@ -290,7 +286,6 @@ export function UploadDocumentModalOptimized({
             });
           }
         } catch (uploadError) {
-          console.error("Upload error:", uploadError);
           setUploadingFiles((prev) => {
             const updated = [...prev];
             updated[i] = { ...updated[i], status: "error" };
@@ -306,7 +301,6 @@ export function UploadDocumentModalOptimized({
         onOpenChange(false);
       }, 2000);
     } catch (error) {
-      console.error("Upload process error:", error);
       setIsUploading(false);
       setUploadingFiles([]);
     }

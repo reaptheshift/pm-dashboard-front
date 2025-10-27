@@ -34,7 +34,6 @@ export function DeleteProjectDialog({
       await onConfirm();
       onOpenChange(false);
     } catch (error) {
-      console.error("Delete error:", error);
     } finally {
       setIsDeleting(false);
     }

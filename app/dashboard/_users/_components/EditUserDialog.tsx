@@ -89,7 +89,6 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
       }));
       setProjectOptions(options);
     } catch (error) {
-      console.error("Failed to fetch projects:", error);
       setProjectOptions([]);
     } finally {
       setIsLoadingProjects(false);

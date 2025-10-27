@@ -5,7 +5,7 @@ import { useHash } from "@/hooks/useHash";
 import { DocumentsContent } from "../_documents/DocumentsContent";
 import { ProjectsContent } from "../_projects/ProjectsContent";
 import { UserContent } from "../_users/UserContent";
-import { IntegrationsContent } from "../../../_integrations/IntegrationsContent";
+import { IntegrationsContent } from "../_integrations/IntegrationsContent";
 
 function Placeholder({ title }: { title: string }) {
   return (

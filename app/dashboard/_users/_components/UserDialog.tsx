@@ -75,7 +75,6 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
       }));
       setProjectOptions(options);
     } catch (error) {
-      console.error("Failed to fetch projects:", error);
       setProjectOptions([]);
     } finally {
       setIsLoadingProjects(false);
@@ -116,7 +115,6 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
       return;
     }
 
-    console.log("Submitting form data:", formData);
     onSubmit(formData);
     // Reset form
     setFormData({

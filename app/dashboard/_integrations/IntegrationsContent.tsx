@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { authorizeProcore } from "../app/dashboard/_integrations/procore/_actions";
+import { authorizeProcore } from "@/app/dashboard/_integrations/procore/_actions";
 import { toast } from "sonner";
 
 export function IntegrationsContent() {

@@ -65,7 +65,6 @@ export async function getDocuments(): Promise<DocumentsResponse> {
     const data = await response.json();
     return data;
   } catch (error: any) {
-    console.error("❌ Error fetching documents:", error);
     throw new Error(error.message || "Failed to fetch documents");
   }
 }
@@ -100,7 +99,6 @@ export async function uploadDocument(
     const result = await response.json();
     return result;
   } catch (error: any) {
-    console.error("❌ Error uploading document:", error);
     throw new Error(error.message || "Failed to upload document");
   }
 }
@@ -135,7 +133,6 @@ export async function getFileStatus(fileId: string): Promise<FileStatus> {
     const status = await response.json();
     return status;
   } catch (error: any) {
-    console.error("❌ Status check error:", error);
     throw new Error(error.message || "Failed to check file status");
   }
 }

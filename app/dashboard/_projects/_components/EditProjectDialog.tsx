@@ -95,7 +95,6 @@ export function EditProjectDialog({
       onOpenChange(false);
     } catch (error) {
       // Don't close dialog on error, let user try again
-      console.error("Form submission error:", error);
     } finally {
       setIsSubmitting(false);
     }
