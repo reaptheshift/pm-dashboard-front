@@ -31,7 +31,7 @@ export interface FieldWorker {
   name: string;
   email: string;
   role: string;
-  projects_relations: ProjectRelation[];
+  project_relations: ProjectRelation[];
 }
 export interface CreateFieldWorkerData {
   name: string;
@@ -147,7 +147,7 @@ export async function updateUser(
       modified_at: Date.now(),
     };
 
-    const response = await fetch(`${XANO_BASE_URL}/users/${userId}`, {
+    const response = await fetch(`${XANO_BASE_URL}/field_workers/${userId}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -167,5 +167,33 @@ export async function updateUser(
     return updatedUser;
   } catch (error: any) {
     throw new Error(error.message || "Failed to update user");
+  }
+}
+
+// Delete a user
+export async function deleteUser(userId: number): Promise<void> {
+  try {
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
+    const response = await fetch(`${XANO_BASE_URL}/field_workers/${userId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `Failed to delete user: ${response.statusText}`
+      );
+    }
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to delete user");
   }
 }

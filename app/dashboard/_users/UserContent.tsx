@@ -8,12 +8,14 @@ import {
   UsersSearchFilter,
   UsersTable,
   UsersPagination,
+  DeleteUserDialog,
 } from "./_components";
 import { UsersSkeleton } from "./_components/UsersSkeleton";
 import {
   createFieldWorker,
   getFieldWorkers,
   updateUser,
+  deleteUser,
   type FieldWorker as ApiUser,
 } from "./_actions";
 
@@ -36,7 +38,7 @@ interface User {
 interface UserContentProps {
   onCreateUser?: () => void;
   onEdit?: () => void;
-  onDelete?: () => void;
+  onDelete?: (user: User) => void;
 }
 
 export function UserContent({
@@ -49,6 +51,8 @@ export function UserContent({
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("date-desc");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
@@ -81,8 +85,8 @@ export function UserContent({
               email: apiUser.email || "No email",
               role: apiUser.role || "field_worker",
               status: "Active" as const, // Default status for now
-              projects: Array.isArray(apiUser.projects_relations)
-                ? apiUser.projects_relations.map((relation) => ({
+              projects: Array.isArray(apiUser.project_relations)
+                ? apiUser.project_relations.map((relation) => ({
                     id: relation.project?.id?.toString() || "unknown",
                     name: relation.project?.name || "Unnamed Project",
                     relationId: relation.relation_id,
@@ -211,8 +215,8 @@ export function UserContent({
         email: updatedUser.email || "No email",
         role: updatedUser.role || "field_worker",
         status: "Active" as const,
-        projects: Array.isArray(updatedUser.projects_relations)
-          ? updatedUser.projects_relations.map((relation) => ({
+        projects: Array.isArray(updatedUser.project_relations)
+          ? updatedUser.project_relations.map((relation) => ({
               id: relation.project?.id?.toString() || "unknown",
               name: relation.project?.name || "Unnamed Project",
               relationId: relation.relation_id,
@@ -232,6 +236,36 @@ export function UserContent({
       );
     } catch (error: any) {
       throw new Error(error.message || "Failed to update user");
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      await deleteUser(parseInt(selectedUser.id));
+
+      // Remove the user from the list
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => user.id !== selectedUser.id)
+      );
+
+      toast.success("User deleted successfully", {
+        description: `${selectedUser.name} has been removed`,
+      });
+
+      setIsDeleteDialogOpen(false);
+      setSelectedUser(null);
+    } catch (error: any) {
+      toast.error("Failed to delete user", {
+        description: error.message || "There was an error deleting the user",
+      });
+      throw error;
     }
   };
 
@@ -272,9 +306,17 @@ export function UserContent({
       <UsersTable
         users={currentData}
         onEdit={onEdit}
-        onDelete={onDelete}
+        onDelete={onDelete || handleDeleteUser}
         onCreateUser={handleCreateUser}
         onUpdate={handleUpdateUser}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteUserDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={confirmDeleteUser}
+        user={selectedUser}
       />
 
       {/* Pagination - only show if there are users */}

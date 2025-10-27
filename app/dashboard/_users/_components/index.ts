@@ -5,3 +5,4 @@ export { UsersTable } from "./UsersTable";
 export { UsersPagination } from "./UsersPagination";
 export { UserDialog } from "./UserDialog";
 export { EditUserDialog } from "./EditUserDialog";
+export { DeleteUserDialog } from "./DeleteUserDialog";
