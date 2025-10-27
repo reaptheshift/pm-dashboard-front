@@ -51,14 +51,8 @@ export function UserContent({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isHydrated, setIsHydrated] = React.useState(false);
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const itemsPerPage = 10;
-
-  // Handle hydration
-  React.useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   // Fetch users on component mount
   React.useEffect(() => {
@@ -241,8 +235,8 @@ export function UserContent({
     }
   };
 
-  // Show loading state until hydrated to prevent hydration mismatch
-  if (!isHydrated || isLoading) {
+  // Show loading state while fetching data
+  if (isLoading) {
     return <UsersSkeleton />;
   }
 

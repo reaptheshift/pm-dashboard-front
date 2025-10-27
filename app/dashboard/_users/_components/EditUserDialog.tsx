@@ -21,6 +21,11 @@ import {
 } from "@/components/ui/dialog";
 import { Edit, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select";
+import { getProjects } from "../../_projects/_actions";
 
 interface User {
   id: string;
@@ -32,6 +37,7 @@ interface User {
   projects: Array<{
     id: string;
     name: string;
+    relationId?: number;
   }>;
   lastLogin: string;
   joinedDate: string;
@@ -47,6 +53,7 @@ interface UpdateUserData {
   email?: string;
   role?: string;
   password?: string;
+  projects?: number[];
 }
 
 export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
@@ -56,15 +63,50 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
     email: user.email,
     role: user.role,
     password: "",
+    projectIds: user.projects.map((p) => p.id),
   });
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [projectOptions, setProjectOptions] = React.useState<
+    MultiSelectOption[]
+  >([]);
+  const [isLoadingProjects, setIsLoadingProjects] = React.useState(false);
+
+  // Fetch projects when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      fetchProjects();
+    }
+  }, [open]);
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoadingProjects(true);
+      const projects = await getProjects();
+      const options: MultiSelectOption[] = projects.map((project) => ({
+        label: project.name,
+        value: project.id.toString(),
+      }));
+      setProjectOptions(options);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      setProjectOptions([]);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       setIsLoading(true);
+
+      // Check if projects have changed
+      const userProjectIds = user.projects.map((p) => p.id);
+      const hasProjectsChanged =
+        JSON.stringify(formData.projectIds.sort()) !==
+        JSON.stringify(userProjectIds.sort());
 
       // Only send fields that have changed
       const updateData: UpdateUserData = {};
@@ -83,6 +125,10 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
 
       if (formData.password) {
         updateData.password = formData.password;
+      }
+
+      if (hasProjectsChanged) {
+        updateData.projects = formData.projectIds.map((id) => parseInt(id, 10));
       }
 
       // Only update if there are changes
@@ -111,6 +157,7 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
         email: user.email,
         role: user.role,
         password: "",
+        projectIds: user.projects.map((p) => p.id),
       });
       setShowPassword(false);
     }
@@ -240,6 +287,36 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
                 <SelectItem value="field_worker">Field Worker</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Projects */}
+          <div className="space-y-2">
+            <label
+              htmlFor="edit-projects"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Assign to Projects
+            </label>
+            <MultiSelect
+              options={projectOptions}
+              value={formData.projectIds}
+              onValueChange={(value) =>
+                setFormData({ ...formData, projectIds: value })
+              }
+              placeholder={
+                isLoadingProjects
+                  ? "Loading projects..."
+                  : projectOptions.length === 0
+                  ? "No projects available"
+                  : "Select projects"
+              }
+              disabled={isLoadingProjects || projectOptions.length === 0}
+              maxCount={2}
+              searchable={true}
+            />
+            <p className="text-xs text-gray-500">
+              Select projects to assign this user to.
+            </p>
           </div>
         </form>
 

@@ -46,6 +46,7 @@ export interface UpdateFieldWorkerData {
   email?: string;
   role?: string;
   password?: string;
+  projects?: number[];
   modified_at?: number;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useHash } from "@/hooks/useHash";
 import {
   Select,
@@ -176,22 +176,39 @@ export function DocumentsContent() {
   }
 
   return (
-    <Suspense fallback={<DocumentsSkeleton />}>
-      <div className="space-y-8">
-        {/* Header Section */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900">
-              {activeHeader}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Manual Refresh Button */}
-            <button
-              onClick={() => loadDocuments(true)}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
-              title="Refresh documents list"
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-semibold text-gray-900">
+            {activeHeader}
+          </h1>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Manual Refresh Button */}
+          <button
+            onClick={() => loadDocuments(true)}
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
+            title="Refresh documents list"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Refresh
+          </button>
+
+          <UploadDocumentModalWrapper onUploadComplete={handleRefresh}>
+            <button className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -202,16 +219,139 @@ export function DocumentsContent() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              Refresh
+              Upload Documents
             </button>
+          </UploadDocumentModalWrapper>
+        </div>
+      </div>
 
-            <UploadDocumentModalWrapper onUploadComplete={handleRefresh}>
-              <button className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors">
+      {/* Metrics Cards */}
+      {shouldShowDocuments && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">
+                  Total Documents
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(documents || []).length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
                 <svg
-                  className="w-5 h-5"
+                  className="w-6 h-6 text-yellow-600"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">
+                  Processing
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {
+                    (documents || []).filter(
+                      (d) => d.processingStatus === "PROCESSING"
+                    ).length
+                  }
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">
+                  Completed
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {
+                    (documents || []).filter(
+                      (d) => d.processingStatus === "COMPLETED"
+                    ).length
+                  }
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">Failed</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {
+                    (documents || []).filter(
+                      (d) => d.processingStatus === "FAILED"
+                    ).length
+                  }
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-red-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search & Filter Section */}
+      {shouldShowDocuments && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <svg
+              className="w-6 h-6 text-blue-600"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Search & Filter
+            </h3>
+          </div>
+
+          <div className="flex flex-col md:flex-row lg:flex-row gap-4 h-max items-stretch">
+            <div className="flex-1">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -220,253 +360,103 @@ export function DocumentsContent() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                Upload Documents
-              </button>
-            </UploadDocumentModalWrapper>
+                <Input
+                  type="text"
+                  placeholder="Search by key"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 flex">
+              <Select>
+                <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <SelectValue placeholder="By status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="accepting-bids">Accepting Bids</SelectItem>
+                  <SelectItem value="deadline-passed">
+                    Deadline Passed
+                  </SelectItem>
+                  <SelectItem value="awarded">Awarded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 flex">
+              <Select>
+                <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <SelectValue placeholder="By size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small (&lt; 1MB)</SelectItem>
+                  <SelectItem value="medium">Medium (1-5MB)</SelectItem>
+                  <SelectItem value="large">Large (&gt; 5MB)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 flex">
+              <Select>
+                <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <SelectValue placeholder="By tags" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="materials">Materials</SelectItem>
+                  <SelectItem value="construction">Construction</SelectItem>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="technical">Technical</SelectItem>
+                  <SelectItem value="financial">Financial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 flex">
+              <Select>
+                <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <SelectValue placeholder="Sort by: Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
+                  <SelectItem value="date-desc">Date (Newest First)</SelectItem>
+                  <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                  <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                  <SelectItem value="size-asc">
+                    Size (Smallest First)
+                  </SelectItem>
+                  <SelectItem value="size-desc">
+                    Size (Largest First)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Metrics Cards */}
-        {shouldShowDocuments && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    Total Documents
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {(documents || []).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-yellow-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
-                  <svg
-                    className="w-6 h-6 text-yellow-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    Processing
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      (documents || []).filter(
-                        (d) => d.processingStatus === "PROCESSING"
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-blue-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
-                  <svg
-                    className="w-6 h-6 text-blue-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    Completed
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      (documents || []).filter(
-                        (d) => d.processingStatus === "COMPLETED"
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-green-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
-                  <svg
-                    className="w-6 h-6 text-green-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">
-                    Failed
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {
-                      (documents || []).filter(
-                        (d) => d.processingStatus === "FAILED"
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-red-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Search & Filter Section */}
-        {shouldShowDocuments && (
+      {/* Documents Table */}
+      {shouldShowDocuments &&
+        (error ? (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-4">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="currentColor"
-                viewBox="0 0 24 24"
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => loadDocuments(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Search & Filter
-              </h3>
-            </div>
-
-            <div className="flex flex-col md:flex-row lg:flex-row gap-4 h-max items-stretch">
-              <div className="flex-1">
-                <div className="relative">
-                  <svg
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                  <Input
-                    type="text"
-                    placeholder="Search by key"
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 flex">
-                <Select>
-                  <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <SelectValue placeholder="By status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="archived">Archived</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="accepting-bids">
-                      Accepting Bids
-                    </SelectItem>
-                    <SelectItem value="deadline-passed">
-                      Deadline Passed
-                    </SelectItem>
-                    <SelectItem value="awarded">Awarded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex-1 flex">
-                <Select>
-                  <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <SelectValue placeholder="By size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="small">Small (&lt; 1MB)</SelectItem>
-                    <SelectItem value="medium">Medium (1-5MB)</SelectItem>
-                    <SelectItem value="large">Large (&gt; 5MB)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex-1 flex">
-                <Select>
-                  <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <SelectValue placeholder="By tags" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="materials">Materials</SelectItem>
-                    <SelectItem value="construction">Construction</SelectItem>
-                    <SelectItem value="photo">Photo</SelectItem>
-                    <SelectItem value="technical">Technical</SelectItem>
-                    <SelectItem value="financial">Financial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex-1 flex">
-                <Select>
-                  <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <SelectValue placeholder="Sort by: Date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date-asc">
-                      Date (Oldest First)
-                    </SelectItem>
-                    <SelectItem value="date-desc">
-                      Date (Newest First)
-                    </SelectItem>
-                    <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                    <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                    <SelectItem value="size-asc">
-                      Size (Smallest First)
-                    </SelectItem>
-                    <SelectItem value="size-desc">
-                      Size (Largest First)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                Retry
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Documents Table */}
-        {shouldShowDocuments &&
-          (error ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <div className="text-center">
-                <p className="text-red-600 mb-4">{error}</p>
-                <button
-                  onClick={() => loadDocuments(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          ) : (
-            <DataTable data={tableData} onDelete={deleteDocument} />
-          ))}
-      </div>
-    </Suspense>
+        ) : (
+          <DataTable data={tableData} onDelete={deleteDocument} />
+        ))}
+    </div>
   );
 }
 

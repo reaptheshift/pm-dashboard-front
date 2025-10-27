@@ -153,20 +153,12 @@ export function UsersTable({
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge
-                      className={`${getRoleBadgeColor(
-                        user.role
-                      )}`}
-                    >
+                    <Badge className={`${getRoleBadgeColor(user.role)}`}>
                       {formatRoleDisplay(user.role)}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge
-                      className={`${getStatusBadgeColor(
-                        user.status
-                      )}`}
-                    >
+                    <Badge className={`${getStatusBadgeColor(user.status)}`}>
                       <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
                       {user.status}
                     </Badge>
@@ -177,7 +169,7 @@ export function UsersTable({
                         <Badge
                           key={project.id}
                           variant="outline"
-                          className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200 hover:bg-current"
+                          className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200"
                         >
                           {project.name}
                         </Badge>
@@ -187,7 +179,7 @@ export function UsersTable({
                           <PopoverTrigger asChild>
                             <Badge
                               variant="outline"
-                              className="text-xs px-2 py-1 bg-gray-50 text-gray-700 border-gray-200 cursor-pointer hover:bg-current"
+                              className="text-xs px-2 py-1 bg-gray-50 text-gray-700 border-gray-200 cursor-pointer"
                             >
                               +{user.projects.length - 2}
                             </Badge>

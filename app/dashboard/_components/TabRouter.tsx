@@ -28,30 +28,63 @@ export function TabRouter() {
     setIsHydrated(true);
   }, []);
 
+  // Determine which tab is active
+  const getActiveTab = () => {
+    if (!isHydrated) return "documents";
+    if (hash === "#Documents" || hash === "") return "documents";
+    if (hash === "#Projects") return "projects";
+    if (hash === "#Users") return "users";
+    if (hash === "#Integrations") return "integrations";
+    if (hash === "#AI") return "ai";
+    if (hash === "#SystemLogs") return "logs";
+    if (hash === "#Settings") return "settings";
+    if (hash === "#Dashboard") return "dashboard";
+    return "documents";
+  };
+
+  const activeTab = getActiveTab();
+
   // Show default content until hydrated to prevent hydration mismatch
   if (!isHydrated) {
     return <DocumentsContent />;
   }
 
-  switch (hash) {
-    case "#Dashboard":
-      return <Placeholder title="Dashboard" />;
-    case "#Projects":
-      return <ProjectsContent />;
-    case "#Users":
-      return <UserContent />;
-    case "#Integrations":
-      return <IntegrationsContent />;
-    case "#AI":
-      return <Placeholder title="AI assistant" />;
-    case "#SystemLogs":
-      return <Placeholder title="System Logs" />;
-    case "#Settings":
-      return <Placeholder title="Settings" />;
-    case "#Documents":
-    default:
-      return <DocumentsContent />;
-  }
+  return (
+    <>
+      {/* Render all tabs but only show the active one */}
+      <div className={activeTab === "documents" ? "block" : "hidden"}>
+        <DocumentsContent />
+      </div>
+
+      <div className={activeTab === "projects" ? "block" : "hidden"}>
+        <ProjectsContent />
+      </div>
+
+      <div className={activeTab === "users" ? "block" : "hidden"}>
+        <UserContent />
+      </div>
+
+      <div className={activeTab === "integrations" ? "block" : "hidden"}>
+        <IntegrationsContent />
+      </div>
+
+      <div className={activeTab === "ai" ? "block" : "hidden"}>
+        <Placeholder title="AI assistant" />
+      </div>
+
+      <div className={activeTab === "logs" ? "block" : "hidden"}>
+        <Placeholder title="System Logs" />
+      </div>
+
+      <div className={activeTab === "settings" ? "block" : "hidden"}>
+        <Placeholder title="Settings" />
+      </div>
+
+      <div className={activeTab === "dashboard" ? "block" : "hidden"}>
+        <Placeholder title="Dashboard" />
+      </div>
+    </>
+  );
 }
 
 export default TabRouter;
