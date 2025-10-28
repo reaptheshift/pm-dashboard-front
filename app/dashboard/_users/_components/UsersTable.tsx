@@ -29,6 +29,7 @@ interface User {
   projects: Array<{
     id: string;
     name: string;
+    relationId?: number;
   }>;
   lastLogin: string;
   joinedDate: string;
@@ -165,9 +166,9 @@ export function UsersTable({
                   </TableCell>
                   <TableCell className="px-6 py-4">
                     <div className="flex items-center gap-1 flex-wrap">
-                      {user.projects.slice(0, 2).map((project) => (
+                      {user.projects.slice(0, 2).map((project, index) => (
                         <Badge
-                          key={project.id}
+                          key={`${project.id}-${project.relationId || index}`}
                           variant="outline"
                           className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200"
                         >
@@ -190,9 +191,11 @@ export function UsersTable({
                                 All Projects ({user.projects.length})
                               </h4>
                               <div className="space-y-1">
-                                {user.projects.map((project) => (
+                                {user.projects.map((project, index) => (
                                   <div
-                                    key={project.id}
+                                    key={`${project.id}-${
+                                      project.relationId || index
+                                    }`}
                                     className="text-sm text-gray-600 py-1 px-2 bg-gray-50 rounded"
                                   >
                                     {project.name}

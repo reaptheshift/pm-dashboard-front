@@ -186,7 +186,6 @@ export function DragDropArea({
           processFiles(files);
         }
       } catch (error) {
-        console.error("Error processing dropped items:", error);
         // Fallback to regular file handling
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
           const files = Array.from(e.dataTransfer.files);

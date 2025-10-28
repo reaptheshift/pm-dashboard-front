@@ -15,7 +15,6 @@ export function LogoutButton() {
     } catch (error: any) {
       // Only show error if it's not a redirect
       if (error.message !== "NEXT_REDIRECT") {
-        console.error("Logout error:", error);
         toast.error("Logout failed", {
           description: "There was an error logging out. Please try again.",
         });

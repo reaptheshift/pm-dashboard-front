@@ -79,19 +79,24 @@ export function UserContent({
               return null;
             }
 
+            // Ensure projects is always an array
+            const projects =
+              apiUser.projects_relations &&
+              Array.isArray(apiUser.projects_relations)
+                ? apiUser.projects_relations.map((relation: any) => ({
+                    id: relation.project?.id?.toString() || "unknown",
+                    name: relation.project?.name || "Unnamed Project",
+                    relationId: relation.relation_id,
+                  }))
+                : [];
+
             return {
               id: apiUser.id.toString(),
               name: apiUser.name || "Unknown",
               email: apiUser.email || "No email",
               role: apiUser.role || "field_worker",
               status: "Active" as const, // Default status for now
-              projects: Array.isArray(apiUser.project_relations)
-                ? apiUser.project_relations.map((relation) => ({
-                    id: relation.project?.id?.toString() || "unknown",
-                    name: relation.project?.name || "Unnamed Project",
-                    relationId: relation.relation_id,
-                  }))
-                : [],
+              projects,
               lastLogin: apiUser.last_login
                 ? new Date(apiUser.last_login).toLocaleString()
                 : "Never",
@@ -215,8 +220,14 @@ export function UserContent({
         email: updatedUser.email || "No email",
         role: updatedUser.role || "field_worker",
         status: "Active" as const,
-        projects: Array.isArray(updatedUser.project_relations)
-          ? updatedUser.project_relations.map((relation) => ({
+        projects: Array.isArray(
+          updatedUser.project_relations || updatedUser.projects_relations
+        )
+          ? (
+              updatedUser.project_relations ||
+              updatedUser.projects_relations ||
+              []
+            ).map((relation: any) => ({
               id: relation.project?.id?.toString() || "unknown",
               name: relation.project?.name || "Unnamed Project",
               relationId: relation.relation_id,

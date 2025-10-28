@@ -31,7 +31,8 @@ export interface FieldWorker {
   name: string;
   email: string;
   role: string;
-  project_relations: ProjectRelation[];
+  projects_relations?: ProjectRelation[]; // GET response
+  project_relations?: ProjectRelation[]; // PATCH response
 }
 export interface CreateFieldWorkerData {
   name: string;
@@ -131,7 +132,7 @@ export async function createFieldWorker(
 
 // Update a user
 export async function updateUser(
-  userId: number,
+  user_id: number,
   userData: UpdateFieldWorkerData
 ): Promise<FieldWorker> {
   try {
@@ -147,7 +148,7 @@ export async function updateUser(
       modified_at: Date.now(),
     };
 
-    const response = await fetch(`${XANO_BASE_URL}/field_workers/${userId}`, {
+    const response = await fetch(`${XANO_BASE_URL}/field_workers/${user_id}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -158,9 +159,11 @@ export async function updateUser(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to update user: ${response.statusText}`
-      );
+      const errorMessage =
+        errorData.message ||
+        errorData.error ||
+        `Failed to update user: ${response.statusText}`;
+      throw new Error(errorMessage);
     }
 
     const updatedUser = await response.json();

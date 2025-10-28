@@ -63,7 +63,9 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
     email: user.email,
     role: user.role,
     password: "",
-    projectIds: user.projects.map((p) => p.id),
+    projectIds: Array.isArray(user.projects)
+      ? user.projects.map((p) => p.id)
+      : [],
   });
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -101,44 +103,26 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
     try {
       setIsLoading(true);
 
-      // Check if projects have changed
-      const userProjectIds = user.projects.map((p) => p.id);
-      const hasProjectsChanged =
-        JSON.stringify(formData.projectIds.sort()) !==
-        JSON.stringify(userProjectIds.sort());
-
-      // Only send fields that have changed
-      const updateData: UpdateUserData = {};
-
-      if (formData.name !== user.name) {
-        updateData.name = formData.name;
-      }
-
-      if (formData.email !== user.email) {
-        updateData.email = formData.email;
-      }
-
-      if (formData.role !== user.role) {
-        updateData.role = formData.role;
-      }
+      // Build update data
+      const updateData: UpdateUserData = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+      };
 
       if (formData.password) {
         updateData.password = formData.password;
       }
 
-      if (hasProjectsChanged) {
+      // Always include projects array if there are projects
+      if (formData.projectIds.length > 0) {
         updateData.projects = formData.projectIds.map((id) => parseInt(id, 10));
       }
 
-      // Only update if there are changes
-      if (Object.keys(updateData).length > 0) {
-        await onUpdate(user.id, updateData);
-        toast.success("User updated successfully");
-        setOpen(false);
-        setFormData({ ...formData, password: "" }); // Clear password field
-      } else {
-        toast.info("No changes to update");
-      }
+      await onUpdate(user.id, updateData);
+      toast.success("User updated successfully");
+      setOpen(false);
+      setFormData({ ...formData, password: "" }); // Clear password field
     } catch (error: any) {
       toast.error("Failed to update user", {
         description: error.message || "There was an error updating the user",
@@ -156,7 +140,9 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
         email: user.email,
         role: user.role,
         password: "",
-        projectIds: user.projects.map((p) => p.id),
+        projectIds: Array.isArray(user.projects)
+          ? user.projects.map((p) => p.id)
+          : [],
       });
       setShowPassword(false);
     }
