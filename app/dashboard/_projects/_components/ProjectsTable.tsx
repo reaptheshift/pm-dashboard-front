@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
+import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -106,35 +106,75 @@ export function ProjectsTable({
   };
 
   const fileToDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
+    new Promise<string>(async (resolve, reject) => {
       // Validate file type
       if (!file.type.startsWith("image/")) {
         reject(new Error("File must be an image"));
         return;
       }
 
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
+      // Hard cap initial file size to avoid reading huge payloads
+      const hardCap = 8 * 1024 * 1024; // 8MB guard
+      if (file.size > hardCap) {
         reject(
           new Error(
-            "Image file is too large. Please choose an image smaller than 5MB."
+            "Image is too large. Please choose an image smaller than 8MB."
           )
         );
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        if (!result.startsWith("data:")) {
-          reject(new Error("Failed to convert file to data URL"));
+      try {
+        // Load image into an <img/> to allow resizing/compression
+        const objectUrl = URL.createObjectURL(file);
+        const img: HTMLImageElement = document.createElement("img");
+        img.crossOrigin = "anonymous";
+        img.src = objectUrl;
+
+        await new Promise<void>((res, rej) => {
+          img.onload = () => res();
+          img.onerror = () => rej(new Error("Failed to read image"));
+        });
+
+        // Resize down to a reasonable max dimension to keep Server Action payload small
+        const MAX_DIMENSION = 512; // px
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Failed to create canvas context"));
           return;
         }
-        resolve(result);
-      };
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file); // yields: data:<mime>;base64,<data>
+
+        const { width, height } = img;
+        const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+        const targetW = Math.max(1, Math.round(width * scale));
+        const targetH = Math.max(1, Math.round(height * scale));
+        canvas.width = targetW;
+        canvas.height = targetH;
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        URL.revokeObjectURL(objectUrl);
+
+        // Prefer JPEG to reduce size even if original is PNG
+        const QUALITY = 0.75;
+        const dataUrl = canvas.toDataURL("image/jpeg", QUALITY);
+
+        // Safety check: keep under ~1MB to avoid Server Action payload limits
+        // Base64 expands ~1.37x; check string length as proxy (< 1,000,000 chars)
+        if (dataUrl.length > 1_000_000) {
+          reject(
+            new Error(
+              "Compressed image is still too large. Please use a smaller image."
+            )
+          );
+          return;
+        }
+
+        resolve(dataUrl);
+      } catch (e: any) {
+        reject(new Error(e?.message || "Failed to process image"));
+      }
     });
 
   const handleCreateProject = async (data: any) => {
@@ -496,7 +536,7 @@ export function ProjectsTable({
                         typeof project.image === "object" &&
                         project.image.url ? (
                           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center">
-                            <Image
+                            <NextImage
                               src={
                                 project.image.url.startsWith("data:")
                                   ? project.image.url
@@ -513,7 +553,7 @@ export function ProjectsTable({
                         ) : project.image &&
                           typeof project.image === "string" ? (
                           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center">
-                            <Image
+                            <NextImage
                               src={
                                 project.image.startsWith("data:")
                                   ? project.image
