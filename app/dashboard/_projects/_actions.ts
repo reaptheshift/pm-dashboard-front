@@ -44,11 +44,15 @@ export async function getProjects(): Promise<Project[]> {
   try {
     const authToken = await getAuthToken();
 
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
     const response = await fetch(`${XANO_BASE_URL}/projects`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        Authorization: `Bearer ${authToken}`,
       },
     });
 
@@ -67,6 +71,10 @@ export async function getProjects(): Promise<Project[]> {
 export async function createProject(data: CreateProjectData): Promise<Project> {
   try {
     const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
 
     // Prepare the request data
     const requestData: any = {
@@ -87,7 +95,7 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify(requestData),
     });
@@ -113,6 +121,10 @@ export async function updateProject(
 ): Promise<Project> {
   try {
     const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
 
     // Validate project ID
     if (!id || typeof id !== "number") {
@@ -144,7 +156,7 @@ export async function updateProject(
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify(requestData),
     });
@@ -184,11 +196,15 @@ export async function deleteProject(id: number): Promise<void> {
   try {
     const authToken = await getAuthToken();
 
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
     const response = await fetch(`${XANO_BASE_URL}/projects/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        Authorization: `Bearer ${authToken}`,
       },
     });
 
