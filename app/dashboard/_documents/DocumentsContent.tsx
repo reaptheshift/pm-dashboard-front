@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { getDocuments } from "./_actions";
+import { getDocuments, getDocumentById } from "./_actions";
 import type { Document } from "./_actions";
 import type { UploadedFileInfo } from "../_components/uploadDocumentModal/types";
 
@@ -472,7 +472,17 @@ export function DocumentsContent() {
             </div>
           </div>
         ) : (
-          <DataTable data={tableData} />
+          <DataTable
+            data={tableData}
+            onFileClick={async (fileId) => {
+              try {
+                // Call secured Xano document details API when filename is clicked
+                await getDocumentById(fileId)
+              } catch (e) {
+                // No-op on error to avoid interrupting UI
+              }
+            }}
+          />
         ))}
     </div>
   );

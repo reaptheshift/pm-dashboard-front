@@ -35,9 +35,10 @@ interface DataTableProps {
   data: TableRowData[];
   className?: string;
   onDelete?: (fileId: string, fileName: string) => void;
+  onFileClick?: (fileId: string) => void;
 }
 
-export function DataTable({ data, className, onDelete }: DataTableProps) {
+export function DataTable({ data, className, onDelete, onFileClick }: DataTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -106,10 +107,13 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
                 <div className="flex items-center gap-3">
                   <FileTypeIcon type={row.fileType} />
                   <div className="flex flex-col">
-                    {row.fileName && row.fileName.length > 20 ? (
+                  {row.fileName && row.fileName.length > 20 ? (
                       <InfoPopover
                         trigger={
-                          <span className="text-sm font-medium text-gray-900 cursor-help hover:text-blue-600 transition-colors">
+                          <span
+                            className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={() => onFileClick && onFileClick(row.id)}
+                          >
                             {truncateFileName(row.fileName)}
                           </span>
                         }
@@ -117,7 +121,10 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
                         description={row.fileName || "Unnamed file"}
                       />
                     ) : (
-                      <span className="text-sm font-medium text-gray-900">
+                      <span
+                        className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={() => onFileClick && onFileClick(row.id)}
+                      >
                         {row.fileName || "Unnamed file"}
                       </span>
                     )}

@@ -168,6 +168,45 @@ export async function getAuthTokenForClient(): Promise<string | null> {
   }
 }
 
+// Get single document details from Xano by ID
+export async function getDocumentById(documentsId: string) {
+  try {
+    if (!documentsId) {
+      throw new Error("Document ID is required")
+    }
+
+    const { getAuthToken } = await import("@/lib/auth-server")
+    const token = await getAuthToken()
+    if (!token) {
+      throw new Error("Authentication required")
+    }
+
+    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
+      documentsId
+    )}`
+
+    const response = await fetch(url, {
+      cache: "no-cache",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(30000),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "")
+      throw new Error(
+        `Failed to fetch document: ${response.status}$${errorText ? ` - ${errorText}` : ""}`
+      )
+    }
+
+    return await response.json()
+  } catch (error) {
+    throw error
+  }
+}
+
 // Get all documents from Xano API
 export async function getDocuments(): Promise<DocumentsResponse> {
   try {
