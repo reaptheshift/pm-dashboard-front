@@ -148,12 +148,18 @@ export function UploadOrchestrator({
           {
             ...options,
             onProgress: (progress) => {
-              // Update all items with same progress for now
+              // Match item by fileId, not by index
               setState((prev) => ({
                 ...prev,
-                items: prev.items.map((item, idx) =>
-                  idx === progress.fileId
-                    ? { ...item, ...progress, status: "uploading" as const }
+                items: prev.items.map((item) =>
+                  item.fileId === progress.fileId ||
+                  (!item.fileId && progress.fileId === "")
+                    ? {
+                        ...item,
+                        progress: progress.progress,
+                        status: "uploading" as const,
+                        fileId: progress.fileId || item.fileId,
+                      }
                     : item
                 ),
                 totalProgress: progress.progress,

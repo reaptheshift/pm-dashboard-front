@@ -266,9 +266,58 @@ async function getCurrentUserId(): Promise<string> {
   }
 }
 
-// S3 Direct Upload - Main file upload API
-export async function uploadFile(
-  file: File,
+// Get S3 pre-signed URL (server action - only returns URL, no file data)
+export async function getS3UploadSignature(
+  fileName: string,
+  fileType: string,
+  fileSize: number,
+  projectId: string,
+  uploadedBy?: string
+): Promise<{
+  s3Url: string;
+  fileId: string;
+  s3Key: string;
+  headers?: Record<string, string>;
+}> {
+  // Auto-get user ID if not provided
+  const actualUploadedBy = uploadedBy || (await getCurrentUserId());
+  // Coerce projectId to a number where possible
+  const projectIdNumeric = (() => {
+    const n = Number(projectId);
+    return Number.isNaN(n) ? projectId : n;
+  })();
+
+  const signatureResponse = await fetch(
+    `${BACKEND_BASE_URL}/api/s3/upload-signature`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName,
+        fileType: fileType || "application/octet-stream",
+        fileSize,
+        projectId: projectIdNumeric,
+        uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
+      }),
+    }
+  );
+
+  if (!signatureResponse.ok) {
+    const errorText = await signatureResponse.text();
+    throw new Error(
+      `Signature request failed: ${signatureResponse.status} - ${errorText}`
+    );
+  }
+
+  return await signatureResponse.json();
+}
+
+// Confirm S3 upload (server action - only sends metadata, no file)
+export async function confirmS3Upload(
+  fileId: string,
+  s3Key: string,
+  fileName: string,
+  fileType: string,
   projectId: string,
   uploadedBy?: string
 ): Promise<UploadResponse> {
@@ -279,87 +328,28 @@ export async function uploadFile(
     const n = Number(projectId);
     return Number.isNaN(n) ? projectId : n;
   })();
-  try {
-    // Step 1: Get S3 signature
-    const signatureResponse = await fetch(
-      `${BACKEND_BASE_URL}/api/s3/upload-signature`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type || "application/octet-stream",
-          fileSize: file.size,
-          projectId: projectIdNumeric,
-          uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
-        }),
-      }
-    );
 
-    if (!signatureResponse.ok) {
-      const errorText = await signatureResponse.text();
-      throw new Error(
-        `Signature request failed: ${signatureResponse.status} - ${errorText}`
-      );
+  const confirmResponse = await fetch(
+    `${BACKEND_BASE_URL}/api/s3/confirm-upload`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileId,
+        s3Key,
+        fileName,
+        fileType,
+        projectId: projectIdNumeric,
+        uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
+      }),
     }
+  );
 
-    const { s3Url, fileId, s3Key, headers } = await signatureResponse.json();
-
-    // Step 2: Upload to S3
-    // Only use headers from the backend - don't add custom headers as they break the signature
-    // Pre-signed URLs require exact header matching, so preserve backend headers exactly
-    let s3Headers: HeadersInit = headers || {};
-
-    // If headers object is empty or Content-Type is missing, ensure it's set
-    // But only if the backend didn't provide it (to avoid breaking signature)
-    if (!headers || Object.keys(headers).length === 0) {
-      // Backend didn't provide headers - create a simple object with Content-Type
-      if (file.type) {
-        s3Headers = { "Content-Type": file.type };
-      }
-    }
-    // If backend provided headers, use them exactly as-is - don't modify!
-
-    const s3Response = await fetch(s3Url, {
-      method: "PUT",
-      body: file,
-      headers: s3Headers,
-    });
-
-    if (!s3Response.ok) {
-      const errorText = await s3Response.text().catch(() => "");
-      throw new Error(
-        `S3 upload failed: ${s3Response.status}${
-          errorText ? ` - ${errorText}` : ""
-        }`
-      );
-    }
-
-    // Step 3: Confirm upload
-    const confirmResponse = await fetch(
-      `${BACKEND_BASE_URL}/api/s3/confirm-upload`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileId,
-          s3Key,
-          fileName: file.name,
-          fileType: file.type,
-          projectId: projectIdNumeric,
-          uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
-        }),
-      }
-    );
-
-    if (!confirmResponse.ok) {
-      throw new Error(`Confirm upload failed: ${confirmResponse.status}`);
-    }
-
-    return await confirmResponse.json();
-  } catch (error: any) {
-    throw new Error(error.message || "Failed to upload file");
+  if (!confirmResponse.ok) {
+    throw new Error(`Confirm upload failed: ${confirmResponse.status}`);
   }
+
+  return await confirmResponse.json();
 }
 
 // Get file status

@@ -1,4 +1,8 @@
-import { uploadFile, getFileStatus } from "@/app/dashboard/_documents/_actions";
+import {
+  getS3UploadSignature,
+  confirmS3Upload,
+  getFileStatus,
+} from "@/app/dashboard/_documents/_actions";
 import type { UploadOptions, UploadResult } from "./types";
 import type { FileStatus } from "@/app/dashboard/_documents/_actions";
 
@@ -64,9 +68,44 @@ export async function uploadSingleFile(
       });
     }
 
-    // Upload to S3
-    const result = await uploadFile(
-      file,
+    // Step 1: Get pre-signed URL from server (no file data sent)
+    const signature = await getS3UploadSignature(
+      file.name,
+      file.type || "application/octet-stream",
+      file.size,
+      options.projectId,
+      options.uploadedBy
+    );
+
+    // Step 2: Upload file directly to S3 from client (bypasses server action limit)
+    const s3Headers: HeadersInit = {};
+    if (
+      signature.headers &&
+      typeof signature.headers === "object" &&
+      Object.keys(signature.headers).length > 0
+    ) {
+      Object.assign(s3Headers, signature.headers);
+    }
+
+    const s3Response = await fetch(signature.s3Url, {
+      method: "PUT",
+      body: file,
+      headers: Object.keys(s3Headers).length > 0 ? s3Headers : undefined,
+    });
+
+    if (!s3Response.ok) {
+      const errorText = await s3Response.text().catch(() => "");
+      throw new Error(
+        `S3 upload failed: ${s3Response.status}${errorText ? ` - ${errorText}` : ""}`
+      );
+    }
+
+    // Step 3: Confirm upload with server (only metadata, no file)
+    const result = await confirmS3Upload(
+      signature.fileId,
+      signature.s3Key,
+      file.name,
+      file.type || "application/octet-stream",
       options.projectId,
       options.uploadedBy
     );
