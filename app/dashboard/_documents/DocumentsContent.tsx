@@ -13,8 +13,9 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { getDocuments, deleteFile as deleteDoc } from "./_actions";
+import { getDocuments } from "./_actions";
 import type { Document } from "./_actions";
+import type { UploadedFileInfo } from "../_components/uploadDocumentModal/types";
 
 export function DocumentsContent() {
   const { hash } = useHash("#Documents");
@@ -59,24 +60,33 @@ export function DocumentsContent() {
     loadDocuments();
   };
 
-  // Delete document function - uses relationId from project relation
-  const deleteDocument = async (fileId: string, fileName: string) => {
-    try {
-      // Find the document to get its relationId from the project relation
-      const doc = documents.find((d) => d.fileId === fileId);
-
-      if (!doc?.relationId) {
-        throw new Error("Relation ID not found for this document");
-      }
-
-      await deleteDoc(doc.relationId);
-
-      // Remove from local state immediately for better UX
-      setDocuments((prev) => prev.filter((doc) => doc.fileId !== fileId));
-    } catch (error) {
-      setError(`Failed to delete ${fileName}. Please try again.`);
+  // Handle upload completion - add files to table without full reload
+  const handleUploadComplete = (uploadedFiles?: UploadedFileInfo[]) => {
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      return;
     }
+
+    // Convert uploaded files to Document format and add to state
+    const newDocuments: Document[] = uploadedFiles.map((uploaded) => ({
+      fileId: uploaded.fileId,
+      fileName: uploaded.fileName,
+      fileType: uploaded.fileType,
+      fileSize: uploaded.fileSize,
+      uploadTimestamp: new Date().toISOString(),
+      processingStatus: "PROCESSING" as const,
+      projectName: uploaded.projectName,
+      projectId: uploaded.projectId,
+    }));
+
+    // Add new documents to the existing list (avoid duplicates)
+    setDocuments((prev) => {
+      const existingIds = new Set(prev.map((d) => d.fileId));
+      const uniqueNew = newDocuments.filter((d) => !existingIds.has(d.fileId));
+      return [...prev, ...uniqueNew];
+    });
   };
+
+  // Deletion handled separately; no client delete logic here
 
   // Convert backend documents to table format
   const tableData = (documents || []).map((doc) => {
@@ -215,7 +225,7 @@ export function DocumentsContent() {
             Refresh
           </button>
 
-          <UploadDocumentModalWrapper onUploadComplete={handleRefresh}>
+          <UploadDocumentModalWrapper onUploadComplete={handleUploadComplete}>
             <button className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors">
               <svg
                 className="w-5 h-5"
@@ -462,7 +472,7 @@ export function DocumentsContent() {
             </div>
           </div>
         ) : (
-          <DataTable data={tableData} onDelete={deleteDocument} />
+          <DataTable data={tableData} />
         ))}
     </div>
   );

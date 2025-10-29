@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { UploadDocumentModalOptimized as UploadDocumentModal } from "../../_components/uploadDocumentModal/uploadDocumentModalOptimized";
+import type { UploadedFileInfo } from "../../_components/uploadDocumentModal/types";
 
 interface UploadDocumentModalWrapperProps {
   children: React.ReactNode;
-  onUploadComplete?: () => void;
+  onUploadComplete?: (uploadedFiles?: UploadedFileInfo[]) => void;
 }
 
 export function UploadDocumentModalWrapper({
@@ -24,11 +25,11 @@ export function UploadDocumentModalWrapper({
 
       <UploadDocumentModal
         open={uploadModalOpen}
-        onOpenChange={(open) => {
+        onOpenChange={(open, uploadedFiles) => {
           setUploadModalOpen(open);
           if (!open && onUploadComplete) {
-            // Call refresh when modal closes (upload completed)
-            onUploadComplete();
+            // Call callback with uploaded files when modal closes
+            onUploadComplete(uploadedFiles);
           }
         }}
       />

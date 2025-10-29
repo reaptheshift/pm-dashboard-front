@@ -13,48 +13,43 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DragDropArea } from "./dragDropArea";
 import { FileDisplay } from "./fileDisplay";
 import { FolderStructureDisplay } from "./folderStructure";
 import { UploadProgress } from "./uploadProgress";
 import { useFileManager } from "./useFileManager";
 import { X } from "lucide-react";
-import {
-  uploadSingleFile,
-  uploadMultipleFiles,
-  uploadFolderFiles,
-  type UploadResult,
-  type FileUploadItem,
-  type UploadOptions,
-} from "./fileUpload";
-import {
-  MultiSelect,
-  type MultiSelectOption,
-} from "@/components/ui/multi-select";
-import { getProjects } from "@/app/dashboard/_projects/_actions";
+import { uploadFileToXano } from "./uploadToXano";
+import { getProjects, type Project } from "@/app/dashboard/_projects/_actions";
+import type { UploadedFileInfo } from "./types";
 
 interface UploadDocumentModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean, uploadedFiles?: UploadedFileInfo[]) => void;
 }
 
 export function UploadDocumentModalOptimized({
   open,
   onOpenChange,
 }: UploadDocumentModalProps) {
-  const [selectedProjects, setSelectedProjects] = React.useState<string[]>([]);
-  const [projectOptions, setProjectOptions] = React.useState<
-    MultiSelectOption[]
-  >([]);
+  const [selectedProject, setSelectedProject] = React.useState<string>("");
+  const [projects, setProjects] = React.useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = React.useState(false);
 
-  // Fetch projects when modal opens and reset state when it closes
+  // Fetch projects when modal opens
   React.useEffect(() => {
     if (open) {
       fetchProjects();
     } else {
-      // Reset selected projects when modal closes
-      setSelectedProjects([]);
+      // Reset selected project when modal closes
+      setSelectedProject("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -62,14 +57,11 @@ export function UploadDocumentModalOptimized({
   const fetchProjects = async () => {
     try {
       setIsLoadingProjects(true);
-      const projects = await getProjects();
-      const options: MultiSelectOption[] = projects.map((project) => ({
-        label: project.name,
-        value: project.id.toString(),
-      }));
-      setProjectOptions(options);
+      const fetchedProjects = await getProjects();
+      setProjects(fetchedProjects);
     } catch (error) {
-      setProjectOptions([]);
+      console.error("Failed to fetch projects:", error);
+      setProjects([]);
     } finally {
       setIsLoadingProjects(false);
     }
@@ -116,29 +108,23 @@ export function UploadDocumentModalOptimized({
     const hasCurrentFiles = selectedFiles.length > 0 || folderStructure;
     const hasFiles = hasAccumulatedFiles || hasCurrentFiles;
 
-    if (!hasFiles || selectedProjects.length === 0) return;
+    if (!hasFiles || !selectedProject) return;
 
     setIsUploading(true);
+
+    // Initialize upload items
+    let initialUploadItems: any[] = [];
 
     // Use accumulated files/folders if available, otherwise use current selection
     const filesToUpload =
       accumulatedFiles.length > 0 ? accumulatedFiles : selectedFiles;
     const structureToUpload = accumulatedFolderStructure || folderStructure;
 
-    // Determine upload type based on what we have
-    const isFolderUpload = structureToUpload !== null;
-    const totalFilesCount = isFolderUpload
-      ? flattenFolderStructure(structureToUpload).length
-      : filesToUpload.length;
-    const uploadType =
-      totalFilesCount === 1 ? "single" : isFolderUpload ? "folder" : "multiple";
-
-    // Initialize upload items for progress tracking
-    let initialUploadItems: FileUploadItem[] = [];
-
-    if (isFolderUpload) {
-      initialUploadItems = flattenFolderStructure(structureToUpload!);
+    if (structureToUpload) {
+      // Upload folder structure
+      initialUploadItems = flattenFolderStructure(structureToUpload);
     } else {
+      // Upload individual files
       initialUploadItems = filesToUpload.map((file) => ({
         file,
         progress: 0,
@@ -148,121 +134,71 @@ export function UploadDocumentModalOptimized({
     }
 
     setUploadingFiles(initialUploadItems);
+
+    // Clear all files after starting upload
     clearAllAccumulatedFiles();
 
+    const uploadedFiles: UploadedFileInfo[] = [];
+    const projectIdNum = Number(selectedProject);
+    const projectName = projects.find((p) => p.id === projectIdNum)?.name;
+
     try {
-      // uploadedBy will be auto-filled by uploadFile server action if not provided
-      const uploadOptions = {
-        projectId: selectedProjects[0],
-        // uploadedBy omitted - will be auto-filled by server action
-        onProgress: (progress: {
-          fileId: string;
-          progress: number;
-          status: string;
-        }) => {
-          // Update progress for the specific file
+      // Upload files to Xano
+      for (let i = 0; i < initialUploadItems.length; i++) {
+        const item = initialUploadItems[i];
+
+        try {
+          // Update status to uploading
           setUploadingFiles((prev) => {
             const updated = [...prev];
-            const itemIndex = updated.findIndex(
-              (u) => u.fileId === progress.fileId || progress.fileId === ""
-            );
-            if (itemIndex !== -1) {
-              const normalizedStatus = progress.status?.toLowerCase();
-              let statusText:
-                | "uploading"
-                | "uploaded"
-                | "processing"
-                | "completed"
-                | "error" = "uploading";
-
-              if (normalizedStatus === "uploaded") {
-                statusText = "uploaded";
-              } else if (normalizedStatus === "processing") {
-                statusText = "processing";
-              } else if (normalizedStatus === "completed") {
-                statusText = "completed";
-              } else if (
-                normalizedStatus === "failed" ||
-                normalizedStatus === "error"
-              ) {
-                statusText = "error";
-              }
-
-              updated[itemIndex] = {
-                ...updated[itemIndex],
-                fileId: progress.fileId || updated[itemIndex].fileId || null,
-                progress: progress.progress,
-                status: statusText,
-              };
-            }
+            updated[i] = { ...updated[i], progress: 10, status: "uploading" };
             return updated;
           });
-        },
-      };
 
-      let results: UploadResult[] = [];
+          // Upload file to Xano
+          const result = await uploadFileToXano(item.file, selectedProject);
 
-      // Upload based on type
-      if (uploadType === "single" && initialUploadItems.length === 1) {
-        // Single file upload
-        const result = await uploadSingleFile(
-          initialUploadItems[0].file,
-          uploadOptions
-        );
-        results = [result];
-      } else if (uploadType === "folder" && isFolderUpload) {
-        // Folder upload - all files from folder structure
-        const allFiles = initialUploadItems.map((item) => item.file);
+          // Collect successful upload info
+          uploadedFiles.push({
+            fileId: result.fileId,
+            fileName: result.fileName,
+            fileSize: item.file.size,
+            fileType: item.file.type || "application/octet-stream",
+            projectId: projectIdNum,
+            projectName,
+          });
 
-        // Use the same uploadOptions which already has progress tracking
-        results = await uploadFolderFiles(allFiles, uploadOptions);
-      } else {
-        // Multiple file upload - use existing uploadOptions with progress tracking
-        results = await uploadMultipleFiles(
-          filesToUpload,
-          uploadOptions,
-          (index, result) => {
-            // Update file ID when each file completes upload
-            setUploadingFiles((prev) => {
-              const updated = [...prev];
-              if (updated[index]) {
-                updated[index] = {
-                  ...updated[index],
-                  fileId: result.fileId,
-                };
-              }
-              return updated;
-            });
-          }
-        );
-      }
-
-      // Update all items with final results
-      setUploadingFiles((prev) => {
-        return prev.map((item, index) => {
-          const result = results[index];
-          if (result) {
-            return {
-              ...item,
+          // Update with file ID - Xano handles processing externally
+          setUploadingFiles((prev) => {
+            const updated = [...prev];
+            updated[i] = {
+              ...updated[i],
               fileId: result.fileId,
               progress: 100,
-              status: "completed" as const,
+              status: "uploaded" as const,
             };
-          }
-          return item;
-        });
-      });
+            return updated;
+          });
+        } catch (uploadError) {
+          console.error("Upload error:", uploadError);
+          setUploadingFiles((prev) => {
+            const updated = [...prev];
+            updated[i] = { ...updated[i], status: "error" };
+            return updated;
+          });
+        }
+      }
 
-      // Close modal after a short delay to show completion
+      // Close modal after all uploads complete
       setTimeout(() => {
         setIsUploading(false);
         setUploadingFiles([]);
-        onOpenChange(false);
-      }, 2000);
+        onOpenChange(false, uploadedFiles);
+      }, 1000);
     } catch (error) {
+      console.error("Upload process error:", error);
       setIsUploading(false);
-      // Keep files in state so user can see which ones failed
-      // Error is handled by individual file status updates
+      setUploadingFiles([]);
     }
   };
 
@@ -457,26 +393,37 @@ export function UploadDocumentModalOptimized({
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
-              Link to projects <span className="text-red-500">*</span>
+              Link to project <span className="text-red-500">*</span>
             </label>
-            <MultiSelect
-              options={projectOptions}
-              value={selectedProjects}
-              onValueChange={setSelectedProjects}
-              placeholder={
-                isLoadingProjects
-                  ? "Loading projects..."
-                  : projectOptions.length === 0
-                  ? "No projects available"
-                  : "Select projects"
-              }
-              disabled={isLoadingProjects || projectOptions.length === 0}
-              maxCount={2}
-              searchable={true}
-            />
-            <p className="text-xs text-gray-500">
-              Select one or more projects to link this document to.
-            </p>
+            <Select
+              value={selectedProject}
+              onValueChange={setSelectedProject}
+              disabled={isLoadingProjects || projects.length === 0}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={
+                    isLoadingProjects
+                      ? "Loading projects..."
+                      : projects.length === 0
+                      ? "No projects available"
+                      : "Select Project"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={String(project.id)}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {projects.length === 0 && !isLoadingProjects && (
+              <p className="text-xs text-gray-500">
+                No projects available. Please create a project first.
+              </p>
+            )}
           </div>
         </div>
 
@@ -498,7 +445,7 @@ export function UploadDocumentModalOptimized({
                   !accumulatedFolderStructure &&
                   selectedFiles.length === 0 &&
                   !folderStructure) ||
-                selectedProjects.length === 0 ||
+                !selectedProject ||
                 isUploading
               }
               className="px-5 py-2.5 bg-gray-950 hover:bg-gray-800 text-white"
