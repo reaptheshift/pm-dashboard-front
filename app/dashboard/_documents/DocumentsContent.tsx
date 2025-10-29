@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { getDocuments, deleteDocument as deleteDoc } from "./_actions";
+import { getDocuments, deleteFile as deleteDoc } from "./_actions";
 import type { Document } from "./_actions";
 
 export function DocumentsContent() {
@@ -59,10 +59,17 @@ export function DocumentsContent() {
     loadDocuments();
   };
 
-  // Delete document function
+  // Delete document function - uses relationId from project relation
   const deleteDocument = async (fileId: string, fileName: string) => {
     try {
-      await deleteDoc(fileId);
+      // Find the document to get its relationId from the project relation
+      const doc = documents.find((d) => d.fileId === fileId);
+
+      if (!doc?.relationId) {
+        throw new Error("Relation ID not found for this document");
+      }
+
+      await deleteDoc(doc.relationId);
 
       // Remove from local state immediately for better UX
       setDocuments((prev) => prev.filter((doc) => doc.fileId !== fileId));
@@ -128,6 +135,7 @@ export function DocumentsContent() {
       ],
       size: formatFileSize(doc.fileSize),
       uploaded: new Date(doc.uploadTimestamp).toLocaleDateString("en-GB"),
+      projectName: doc.projectName,
       parsingStatus: (() => {
         const status = doc.processingStatus.toLowerCase();
         switch (status) {

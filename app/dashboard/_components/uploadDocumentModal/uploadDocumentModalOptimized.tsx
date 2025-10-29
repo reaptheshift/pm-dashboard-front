@@ -13,25 +13,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DragDropArea } from "./dragDropArea";
 import { FileDisplay } from "./fileDisplay";
 import { FolderStructureDisplay } from "./folderStructure";
 import { UploadProgress } from "./uploadProgress";
 import { useFileManager } from "./useFileManager";
 import { X } from "lucide-react";
-import { uploadDocument, pollFileStatus } from "../../_documents/_actions";
+import {
+  uploadSingleFile,
+  uploadMultipleFiles,
+  uploadFolderFiles,
+  type UploadResult,
+  type FileUploadItem,
+  type UploadOptions,
+} from "./fileUpload";
 import {
   MultiSelect,
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
-import { getProjects } from "../../_projects/_actions";
+import { getProjects } from "@/app/dashboard/_projects/_actions";
 
 interface UploadDocumentModalProps {
   open: boolean;
@@ -56,6 +56,7 @@ export function UploadDocumentModalOptimized({
       // Reset selected projects when modal closes
       setSelectedProjects([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const fetchProjects = async () => {
@@ -95,58 +96,6 @@ export function UploadDocumentModalOptimized({
     flattenFolderStructure,
   } = useFileManager();
 
-  // Helper function to remove a specific file from folder structure
-  const removeFileFromFolderStructure = (
-    structure: any,
-    targetFile: File,
-    targetFolderPath: string[]
-  ): any => {
-    // If we're at the target folder, remove the file
-    if (targetFolderPath.length === 0) {
-      const updatedFiles = structure.files.filter(
-        (file: File) => file !== targetFile
-      );
-      if (
-        updatedFiles.length === 0 &&
-        Object.keys(structure.subfolders).length === 0
-      ) {
-        return null; // Remove empty folder
-      }
-      return { ...structure, files: updatedFiles };
-    }
-
-    // Navigate to the target folder
-    const [nextFolderName, ...remainingPath] = targetFolderPath;
-    const nextFolder = structure.subfolders[nextFolderName];
-
-    if (!nextFolder) {
-      return structure; // Folder not found, return unchanged
-    }
-
-    // Recursively remove from subfolder
-    const updatedSubfolder = removeFileFromFolderStructure(
-      nextFolder,
-      targetFile,
-      remainingPath
-    );
-
-    if (updatedSubfolder === null) {
-      // Remove empty subfolder
-      const remainingSubfolders = { ...structure.subfolders };
-      delete remainingSubfolders[nextFolderName];
-      return { ...structure, subfolders: remainingSubfolders };
-    } else {
-      // Update subfolder
-      return {
-        ...structure,
-        subfolders: {
-          ...structure.subfolders,
-          [nextFolderName]: updatedSubfolder,
-        },
-      };
-    }
-  };
-
   const handleFilesSelected = (files: File[]) => {
     // Always add to accumulated files for multiple selection
     addToAccumulatedFiles(files, null);
@@ -171,19 +120,25 @@ export function UploadDocumentModalOptimized({
 
     setIsUploading(true);
 
-    // Initialize upload items
-    let initialUploadItems: any[] = [];
-
     // Use accumulated files/folders if available, otherwise use current selection
     const filesToUpload =
       accumulatedFiles.length > 0 ? accumulatedFiles : selectedFiles;
     const structureToUpload = accumulatedFolderStructure || folderStructure;
 
-    if (structureToUpload) {
-      // Upload folder structure
-      initialUploadItems = flattenFolderStructure(structureToUpload);
+    // Determine upload type based on what we have
+    const isFolderUpload = structureToUpload !== null;
+    const totalFilesCount = isFolderUpload
+      ? flattenFolderStructure(structureToUpload).length
+      : filesToUpload.length;
+    const uploadType =
+      totalFilesCount === 1 ? "single" : isFolderUpload ? "folder" : "multiple";
+
+    // Initialize upload items for progress tracking
+    let initialUploadItems: FileUploadItem[] = [];
+
+    if (isFolderUpload) {
+      initialUploadItems = flattenFolderStructure(structureToUpload!);
     } else {
-      // Upload individual files
       initialUploadItems = filesToUpload.map((file) => ({
         file,
         progress: 0,
@@ -193,108 +148,112 @@ export function UploadDocumentModalOptimized({
     }
 
     setUploadingFiles(initialUploadItems);
-
-    // Clear all files after starting upload
     clearAllAccumulatedFiles();
 
     try {
-      // Upload files to backend
-      for (let i = 0; i < initialUploadItems.length; i++) {
-        const item = initialUploadItems[i];
-
-        try {
-          // Update status to uploading
+      // uploadedBy will be auto-filled by uploadFile server action if not provided
+      const uploadOptions = {
+        projectId: selectedProjects[0],
+        // uploadedBy omitted - will be auto-filled by server action
+        onProgress: (progress: {
+          fileId: string;
+          progress: number;
+          status: string;
+        }) => {
+          // Update progress for the specific file
           setUploadingFiles((prev) => {
             const updated = [...prev];
-            updated[i] = { ...updated[i], progress: 10, status: "uploading" };
-            return updated;
-          });
+            const itemIndex = updated.findIndex(
+              (u) => u.fileId === progress.fileId || progress.fileId === ""
+            );
+            if (itemIndex !== -1) {
+              const normalizedStatus = progress.status?.toLowerCase();
+              let statusText:
+                | "uploading"
+                | "uploaded"
+                | "processing"
+                | "completed"
+                | "error" = "uploading";
 
-          // Create FormData for upload
-          const formData = new FormData();
-          formData.append("file", item.file);
-          if (selectedProjects.length > 0) {
-            // Convert string IDs to integers and send as JSON array
-            const projects = selectedProjects.map((id) => parseInt(id, 10));
-            formData.append("projects", JSON.stringify(projects));
-          }
+              if (normalizedStatus === "uploaded") {
+                statusText = "uploaded";
+              } else if (normalizedStatus === "processing") {
+                statusText = "processing";
+              } else if (normalizedStatus === "completed") {
+                statusText = "completed";
+              } else if (
+                normalizedStatus === "failed" ||
+                normalizedStatus === "error"
+              ) {
+                statusText = "error";
+              }
 
-          // Upload file to backend
-          const result = await uploadDocument(formData);
-
-          // Update with file ID and start polling
-          setUploadingFiles((prev) => {
-            const updated = [...prev];
-            updated[i] = { ...updated[i], fileId: result.fileId, progress: 50 };
-            return updated;
-          });
-
-          // Poll for status updates
-          try {
-            const finalStatus = await pollFileStatus(result.fileId);
-
-            const normalizedStatus = finalStatus.status?.toLowerCase();
-            let progress = 0;
-            let statusText = "uploading";
-
-            if (normalizedStatus === "uploaded") {
-              progress = 25;
-              statusText = "uploaded";
-            } else if (normalizedStatus === "processing") {
-              progress = 50;
-              statusText = "processing";
-            } else if (normalizedStatus === "completed") {
-              progress = 100;
-              statusText = "completed";
-            } else if (normalizedStatus === "failed") {
-              progress = 0;
-              statusText = "error";
-            } else {
-              progress = finalStatus.progress || 75;
-              statusText = "uploading";
+              updated[itemIndex] = {
+                ...updated[itemIndex],
+                fileId: progress.fileId || updated[itemIndex].fileId || null,
+                progress: progress.progress,
+                status: statusText,
+              };
             }
+            return updated;
+          });
+        },
+      };
 
+      let results: UploadResult[] = [];
+
+      // Upload based on type
+      if (uploadType === "single" && initialUploadItems.length === 1) {
+        // Single file upload
+        const result = await uploadSingleFile(
+          initialUploadItems[0].file,
+          uploadOptions
+        );
+        results = [result];
+      } else if (uploadType === "folder" && isFolderUpload) {
+        // Folder upload - all files from folder structure
+        const allFiles = initialUploadItems.map((item) => item.file);
+
+        // Use the same uploadOptions which already has progress tracking
+        results = await uploadFolderFiles(allFiles, uploadOptions);
+      } else {
+        // Multiple file upload - use existing uploadOptions with progress tracking
+        results = await uploadMultipleFiles(
+          filesToUpload,
+          uploadOptions,
+          (index, result) => {
+            // Update file ID when each file completes upload
             setUploadingFiles((prev) => {
               const updated = [...prev];
-              const itemIndex = updated.findIndex(
-                (u) => u.fileId === result.fileId
-              );
-              if (itemIndex !== -1) {
-                updated[itemIndex] = {
-                  ...updated[itemIndex],
-                  progress,
-                  status: statusText as
-                    | "uploading"
-                    | "uploaded"
-                    | "processing"
-                    | "completed"
-                    | "error",
+              if (updated[index]) {
+                updated[index] = {
+                  ...updated[index],
+                  fileId: result.fileId,
                 };
               }
               return updated;
             });
-          } catch (pollError) {
-            setUploadingFiles((prev) => {
-              const updated = [...prev];
-              const itemIndex = updated.findIndex(
-                (u) => u.fileId === result.fileId
-              );
-              if (itemIndex !== -1) {
-                updated[itemIndex] = { ...updated[itemIndex], status: "error" };
-              }
-              return updated;
-            });
           }
-        } catch (uploadError) {
-          setUploadingFiles((prev) => {
-            const updated = [...prev];
-            updated[i] = { ...updated[i], status: "error" };
-            return updated;
-          });
-        }
+        );
       }
 
-      // Close modal after all uploads complete
+      // Update all items with final results
+      setUploadingFiles((prev) => {
+        return prev.map((item, index) => {
+          const result = results[index];
+          if (result) {
+            return {
+              ...item,
+              fileId: result.fileId,
+              progress: 100,
+              status: "completed" as const,
+            };
+          }
+          return item;
+        });
+      });
+
+      // Close modal after a short delay to show completion
       setTimeout(() => {
         setIsUploading(false);
         setUploadingFiles([]);
@@ -302,7 +261,8 @@ export function UploadDocumentModalOptimized({
       }, 2000);
     } catch (error) {
       setIsUploading(false);
-      setUploadingFiles([]);
+      // Keep files in state so user can see which ones failed
+      // Error is handled by individual file status updates
     }
   };
 

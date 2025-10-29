@@ -1,29 +1,153 @@
 "use server";
 
-import { getAuthToken } from "@/lib/auth-server";
-
-const XANO_BASE_URL = "https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv";
+// Validate and normalize backend URL
+const BACKEND_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
 export interface Document {
-  id: number;
   fileId: string;
   fileName: string;
   fileType: string;
   fileSize: number;
   uploadTimestamp: string;
-  uploadTimestampISO: string;
   processingStatus: "COMPLETED" | "PROCESSING" | "FAILED" | "PENDING";
-  projectId: string | null;
-  uploadedBy: string;
+  projectName?: string;
+  projectId?: number;
+  relationId?: number; // Relation ID from project relation for deletion
   metadata?: {
     chunkCount: number;
     textLength: number;
   };
 }
 
-export interface DocumentsResponse {
-  documents: Document[];
-  total: number;
+// Xano document response format
+interface XanoDocument {
+  id: string;
+  name: string;
+  original_name: string;
+  path: string;
+  size: number;
+  type: string;
+  content_type: string;
+  processing_status: string;
+  created_at: number;
+  project_id?: number;
+  project?: {
+    id: number;
+    name: string;
+    relation_id?: number; // Relation ID comes from the project relation
+  };
+  [key: string]: any;
+}
+
+// Transform Xano document to expected Document format
+function transformXanoDocument(xanoDoc: XanoDocument): Document {
+  // Map processing status (Xano uses lowercase, we need uppercase)
+  const statusMap: Record<
+    string,
+    "COMPLETED" | "PROCESSING" | "FAILED" | "PENDING"
+  > = {
+    completed: "COMPLETED",
+    processing: "PROCESSING",
+    failed: "FAILED",
+    pending: "PENDING",
+  };
+
+  const normalizedStatus = (
+    xanoDoc.processing_status || "pending"
+  ).toLowerCase();
+  const processingStatus = statusMap[normalizedStatus] || "PENDING";
+
+  // Convert timestamp from milliseconds to ISO string
+  const uploadTimestamp = xanoDoc.created_at
+    ? new Date(xanoDoc.created_at).toISOString()
+    : new Date().toISOString();
+
+  // Map file type - use 'type' field (pdf, image) and derive from content_type or extension
+  const rawType = (xanoDoc.type || "").toLowerCase();
+  const contentType = (xanoDoc.content_type || "").toLowerCase();
+  const fileName = xanoDoc.original_name || xanoDoc.name || "";
+  const extension = fileName.split(".").pop()?.toUpperCase() || "";
+
+  let fileType = "";
+
+  // Direct type mapping (Xano returns lowercase: "pdf", "image")
+  if (rawType === "pdf") {
+    fileType = "PDF";
+  } else if (rawType === "image") {
+    // For images, check extension or content type
+    const imageExtensions = ["JPG", "JPEG", "PNG", "GIF", "WEBP"];
+    if (imageExtensions.includes(extension)) {
+      // Images not in supported icon types, use DOC as fallback or handle specially
+      // Since FileTypeIcon doesn't support images, we'll use DOC
+      fileType = "DOC";
+    } else {
+      fileType = "DOC"; // Default for unknown image types
+    }
+  } else {
+    // Derive from content_type
+    if (contentType.includes("pdf")) {
+      fileType = "PDF";
+    } else if (
+      contentType.includes("word") ||
+      contentType.includes("document") ||
+      contentType.includes("msword")
+    ) {
+      fileType = "DOC";
+    } else if (
+      contentType.includes("sheet") ||
+      contentType.includes("excel") ||
+      contentType.includes("spreadsheet")
+    ) {
+      fileType = "XLS";
+    } else if (
+      contentType.includes("csv") ||
+      contentType.includes("comma-separated")
+    ) {
+      fileType = "CSV";
+    } else if (
+      contentType.includes("presentation") ||
+      contentType.includes("powerpoint")
+    ) {
+      fileType = "PPTX";
+    } else {
+      // Fallback: derive from file extension
+      const extensionMap: Record<string, string> = {
+        PDF: "PDF",
+        DOC: "DOC",
+        DOCX: "DOC",
+        XLS: "XLS",
+        XLSX: "XLS",
+        CSV: "CSV",
+        PPT: "PPTX",
+        PPTX: "PPTX",
+      };
+      fileType = extensionMap[extension] || "DOC"; // Default to DOC if unknown
+    }
+  }
+
+  return {
+    fileId: xanoDoc.id,
+    fileName: xanoDoc.original_name || xanoDoc.name || "Unknown file",
+    fileType,
+    fileSize: xanoDoc.size || 0,
+    uploadTimestamp,
+    processingStatus,
+    projectName: xanoDoc.project?.name || undefined,
+    projectId: xanoDoc.project_id || xanoDoc.project?.id || undefined,
+    relationId: xanoDoc.project?.relation_id || undefined,
+  };
+}
+
+export interface QueryResponse {
+  query: string;
+  answer: string;
+  sources: Array<{
+    fileId: string;
+    fileName: string;
+    pageNumber?: number;
+    excerpt?: string;
+  }>;
 }
 
 export interface UploadResponse {
@@ -41,93 +165,220 @@ export interface FileStatus {
   error?: string;
 }
 
-// Fetch all documents
-export async function getDocuments(): Promise<DocumentsResponse> {
-  try {
-    const authToken = await getAuthToken();
-
-    const response = await fetch(`${XANO_BASE_URL}/documents`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
-      // Add cache configuration for Next.js 16
-      next: {
-        revalidate: 60, // Revalidate every 60 seconds
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch documents: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error: any) {
-    throw new Error(error.message || "Failed to fetch documents");
-  }
+export interface DocumentsResponse {
+  documents: Document[];
+  total: number;
 }
 
-// Upload a file
-export async function uploadDocument(
-  formData: FormData
-): Promise<UploadResponse> {
+// StatusCallback type removed - polling with callbacks moved to client side
+
+// Get all documents from Xano API
+export async function getDocuments(): Promise<DocumentsResponse> {
   try {
-    const authToken = await getAuthToken();
+    // Get auth token for Xano API
+    const { getAuthToken } = await import("@/lib/auth-server");
+    const token = await getAuthToken();
 
-    if (!authToken) {
-      throw new Error("Authentication required");
-    }
-
-    const response = await fetch(`${XANO_BASE_URL}/documents/upload`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        // Don't set Content-Type header, let fetch set it with boundary for FormData
-      },
-      body: formData,
-    });
+    const response = await fetch(
+      "https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents",
+      {
+        cache: "no-cache",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        // Add timeout for connection issues
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      }
+    );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text().catch(() => "");
       throw new Error(
-        errorData.message || `Failed to upload document: ${response.statusText}`
+        `Failed to fetch documents: ${response.status}${
+          errorText ? ` - ${errorText}` : ""
+        }`
       );
     }
 
-    const result = await response.json();
-    return result;
+    const data = await response.json();
+
+    // Handle different response formats from Xano
+    let documentsArray: XanoDocument[] = [];
+
+    if (Array.isArray(data)) {
+      // Direct array response
+      documentsArray = data;
+    } else if (data.documents && Array.isArray(data.documents)) {
+      // Nested documents array
+      documentsArray = data.documents;
+    } else if (data.results && Array.isArray(data.results)) {
+      // Alternative nested format
+      documentsArray = data.results;
+    } else {
+      // Fallback: try to find any array in the response
+      throw new Error("Unexpected response format from Xano API");
+    }
+
+    // Transform Xano documents to expected Document format
+    const transformedDocuments = documentsArray.map(transformXanoDocument);
+
+    return {
+      documents: transformedDocuments,
+      total: transformedDocuments.length,
+    };
   } catch (error: any) {
-    throw new Error(error.message || "Failed to upload document");
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error(
+        "Connection timeout: Unable to reach Xano API. Please check your network connection."
+      );
+    }
+    if (
+      error.message?.includes("ECONNREFUSED") ||
+      error.message?.includes("timeout")
+    ) {
+      throw new Error(
+        "Cannot connect to Xano API. Please verify your connection and authentication."
+      );
+    }
+    throw error;
+  }
+}
+
+// Get current user ID for uploads (returns a numeric string)
+async function getCurrentUserId(): Promise<string> {
+  try {
+    const { checkServerAuth } = await import("@/lib/auth-server");
+    const user = await checkServerAuth();
+    // Prefer numeric id; some backends require a number for uploadedBy
+    const rawId = (user as any)?.id ?? (user as any)?.user_id;
+    if (rawId !== undefined && rawId !== null) {
+      const idStr = String(rawId);
+      const idNum = Number(idStr);
+      // Return numeric string if it parses, else the raw string
+      if (!Number.isNaN(idNum)) return String(idNum);
+      return idStr;
+    }
+    // As a strict fallback, return "0" (unauthenticated/system)
+    return "0";
+  } catch {
+    return "0";
+  }
+}
+
+// S3 Direct Upload - Main file upload API
+export async function uploadFile(
+  file: File,
+  projectId: string,
+  uploadedBy?: string
+): Promise<UploadResponse> {
+  // Auto-get user ID if not provided
+  const actualUploadedBy = uploadedBy || (await getCurrentUserId());
+  // Coerce projectId to a number where possible
+  const projectIdNumeric = (() => {
+    const n = Number(projectId);
+    return Number.isNaN(n) ? projectId : n;
+  })();
+  try {
+    // Step 1: Get S3 signature
+    const signatureResponse = await fetch(
+      `${BACKEND_BASE_URL}/api/s3/upload-signature`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size,
+          projectId: projectIdNumeric,
+          uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
+        }),
+      }
+    );
+
+    if (!signatureResponse.ok) {
+      const errorText = await signatureResponse.text();
+      throw new Error(
+        `Signature request failed: ${signatureResponse.status} - ${errorText}`
+      );
+    }
+
+    const { s3Url, fileId, s3Key, headers } = await signatureResponse.json();
+
+    // Step 2: Upload to S3
+    // Only use headers from the backend - don't add custom headers as they break the signature
+    // Pre-signed URLs require exact header matching, so preserve backend headers exactly
+    let s3Headers: HeadersInit = headers || {};
+
+    // If headers object is empty or Content-Type is missing, ensure it's set
+    // But only if the backend didn't provide it (to avoid breaking signature)
+    if (!headers || Object.keys(headers).length === 0) {
+      // Backend didn't provide headers - create a simple object with Content-Type
+      if (file.type) {
+        s3Headers = { "Content-Type": file.type };
+      }
+    }
+    // If backend provided headers, use them exactly as-is - don't modify!
+
+    const s3Response = await fetch(s3Url, {
+      method: "PUT",
+      body: file,
+      headers: s3Headers,
+    });
+
+    if (!s3Response.ok) {
+      const errorText = await s3Response.text().catch(() => "");
+      throw new Error(
+        `S3 upload failed: ${s3Response.status}${
+          errorText ? ` - ${errorText}` : ""
+        }`
+      );
+    }
+
+    // Step 3: Confirm upload
+    const confirmResponse = await fetch(
+      `${BACKEND_BASE_URL}/api/s3/confirm-upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId,
+          s3Key,
+          fileName: file.name,
+          fileType: file.type,
+          projectId: projectIdNumeric,
+          uploadedBy: Number(actualUploadedBy) || actualUploadedBy,
+        }),
+      }
+    );
+
+    if (!confirmResponse.ok) {
+      throw new Error(`Confirm upload failed: ${confirmResponse.status}`);
+    }
+
+    return await confirmResponse.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to upload file");
   }
 }
 
 // Get file status
 export async function getFileStatus(fileId: string): Promise<FileStatus> {
   try {
-    const authToken = await getAuthToken();
-
-    if (!authToken) {
-      throw new Error("Authentication required");
-    }
-
-    // Add cache-busting parameter to prevent 304 responses
     const timestamp = Date.now();
     const response = await fetch(
-      `${XANO_BASE_URL}/documents/${fileId}/status?t=${timestamp}`,
+      `${BACKEND_BASE_URL}/api/file/${fileId}/status?t=${timestamp}`,
       {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
         cache: "no-cache",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       }
     );
 
     if (!response.ok) {
-      throw new Error(`Status check failed: ${response.statusText}`);
+      throw new Error(`Status check failed: ${response.status}`);
     }
 
     const status = await response.json();
@@ -137,73 +388,103 @@ export async function getFileStatus(fileId: string): Promise<FileStatus> {
   }
 }
 
-// Poll file status until completed or failed
-export async function pollFileStatus(
-  fileId: string,
-  maxAttempts: number = 300,
-  intervalMs: number = 2000
-): Promise<FileStatus> {
-  return new Promise((resolve, reject) => {
+// Get file status (server action - no client callbacks)
+export async function pollFileStatus(fileId: string): Promise<FileStatus> {
+  return new Promise(async (resolve, reject) => {
     let pollCount = 0;
+    const maxPolls = 300; // 10 minutes with 2-second intervals
 
     const pollInterval = setInterval(async () => {
       pollCount++;
 
       try {
-        const status = await getFileStatus(fileId);
+        const currentStatus = await getFileStatus(fileId);
 
-        const normalizedStatus = status.status?.toLowerCase();
+        const normalizedStatus = currentStatus.status?.toLowerCase();
 
         if (normalizedStatus === "completed" || normalizedStatus === "failed") {
           clearInterval(pollInterval);
-          resolve(status);
-        } else if (pollCount >= maxAttempts) {
+          resolve(currentStatus);
+        } else if (pollCount >= maxPolls) {
           clearInterval(pollInterval);
-
-          // Instead of rejecting, resolve with a timeout status
           resolve({
             fileId,
             status: "TIMEOUT",
-            progress: status.progress || 0,
+            progress: currentStatus.progress || 0,
             message: `Processing is taking longer than expected. The file may still be processing in the background. Please refresh the page later to check status.`,
           });
         }
       } catch (error) {
-        // On error, continue polling rather than rejecting immediately
-        // Only reject after 5 consecutive errors
         if (pollCount % 5 === 0) {
           clearInterval(pollInterval);
           reject(error);
         }
       }
-    }, intervalMs);
+    }, 2000);
   });
 }
 
-// Delete a document
-export async function deleteDocument(fileId: string): Promise<void> {
+// Delete file by relation_id (from project relation)
+export async function deleteFile(
+  relationId: number | string
+): Promise<{ success: boolean; message: string; fileId?: string }> {
   try {
-    const authToken = await getAuthToken();
+    // Get auth token for Xano API
+    const { getAuthToken } = await import("@/lib/auth-server");
+    const token = await getAuthToken();
 
-    if (!authToken) {
-      throw new Error("Authentication required");
+    const relationIdNum =
+      typeof relationId === "string" ? Number(relationId) : relationId;
+
+    if (isNaN(relationIdNum)) {
+      throw new Error("Invalid relation ID provided");
     }
 
-    const response = await fetch(`${XANO_BASE_URL}/documents/${fileId}`, {
-      method: "DELETE",
+    const response = await fetch(
+      `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${relationIdNum}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Delete failed: ${response.status}${errorText ? ` - ${errorText}` : ""}`
+      );
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to delete file");
+  }
+}
+
+// Force sync with S3 storage
+export async function syncWithS3(): Promise<{
+  success: boolean;
+  removed: string[];
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/documents/sync`, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to delete document: ${response.statusText}`
-      );
+      throw new Error(`Failed to sync with S3: ${response.status}`);
     }
+
+    const result = await response.json();
+    return result;
   } catch (error: any) {
-    throw new Error(error.message || "Failed to delete document");
+    throw new Error(error.message || "Failed to sync with S3");
   }
 }

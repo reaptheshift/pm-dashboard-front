@@ -16,6 +16,7 @@ import { TagBadge, TagColor } from "./tagBadge";
 import { ActionButtons } from "./actionButtons";
 import { TablePagination } from "./tablePagination";
 import { InfoPopover } from "./universalPopover";
+import { Badge } from "@/components/ui/badge";
 
 export interface TableRowData {
   id: string;
@@ -27,6 +28,7 @@ export interface TableRowData {
   size: string;
   uploaded: string;
   parsingStatus: StatusType;
+  projectName?: string;
 }
 
 interface DataTableProps {
@@ -69,6 +71,9 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
             </TableHead>
             <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
               Parsing Status
+            </TableHead>
+            <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
+              Project
             </TableHead>
             <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
               Category
@@ -124,6 +129,19 @@ export function DataTable({ data, className, onDelete }: DataTableProps) {
               {/* Parsing Status Column */}
               <TableCell className="px-6 py-4 p-4">
                 <StatusBadge status={row.parsingStatus} />
+              </TableCell>
+
+              {/* Project Column */}
+              <TableCell className="px-6 py-4 p-4">
+                {row.projectName ? (
+                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                    {row.projectName}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-gray-50 text-gray-700 border-gray-200">
+                    No Project
+                  </Badge>
+                )}
               </TableCell>
 
               {/* Category Column */}

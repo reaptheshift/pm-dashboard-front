@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -110,20 +109,30 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
         role: formData.role,
       };
 
+      console.log("🔵 EditUserDialog - Initial formData:", formData);
+      console.log("🔵 EditUserDialog - Initial updateData:", updateData);
+
       if (formData.password) {
         updateData.password = formData.password;
       }
 
-      // Always include projects array if there are projects
-      if (formData.projectIds.length > 0) {
-        updateData.projects = formData.projectIds.map((id) => parseInt(id, 10));
-      }
+      // Always include projects array - send empty array if no projects selected
+      updateData.projects = formData.projectIds.map((id) => parseInt(id, 10));
+
+      console.log(
+        "🔵 EditUserDialog - Final updateData before API call:",
+        updateData
+      );
+      console.log("🔵 EditUserDialog - User ID:", user.id);
 
       await onUpdate(user.id, updateData);
+
+      console.log("✅ EditUserDialog - Update successful");
       toast.success("User updated successfully");
       setOpen(false);
       setFormData({ ...formData, password: "" }); // Clear password field
     } catch (error: any) {
+      console.error("❌ EditUserDialog - Update failed:", error);
       toast.error("Failed to update user", {
         description: error.message || "There was an error updating the user",
       });
@@ -192,6 +201,7 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
               }
               className="w-full"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -213,6 +223,7 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
               }
               className="w-full"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -234,6 +245,8 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 className="w-full pr-10"
+                disabled={isLoading}
+                autoComplete="new-password"
               />
               <Button
                 type="button"
@@ -241,6 +254,7 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
                 size="sm"
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4 text-gray-400" />
@@ -249,6 +263,9 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
                 )}
               </Button>
             </div>
+            <p className="text-xs text-gray-500">
+              Leave empty to keep the current password
+            </p>
           </div>
 
           {/* Role */}
@@ -264,6 +281,7 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
               onValueChange={(value) =>
                 setFormData({ ...formData, role: value })
               }
+              disabled={isLoading}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select role" />
@@ -295,7 +313,9 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
                   ? "No projects available"
                   : "Select projects"
               }
-              disabled={isLoadingProjects || projectOptions.length === 0}
+              disabled={
+                isLoadingProjects || projectOptions.length === 0 || isLoading
+              }
               maxCount={2}
               searchable={true}
             />
@@ -303,26 +323,26 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
               Select projects to assign this user to.
             </p>
           </div>
-        </form>
 
-        {/* Footer */}
-        <DialogFooter className="flex justify-end gap-3 px-6 pb-6">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            type="button"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="bg-gray-900 text-white hover:bg-gray-800"
-            onClick={handleSubmit}
-          >
-            {isLoading ? "Updating..." : "Update"}
-          </Button>
-        </DialogFooter>
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              type="button"
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="bg-gray-900 text-white hover:bg-gray-800"
+            >
+              {isLoading ? "Updating..." : "Update"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
