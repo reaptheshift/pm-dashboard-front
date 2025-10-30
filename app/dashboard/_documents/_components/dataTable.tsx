@@ -190,8 +190,13 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
               <TableCell className="px-4 py-4 p-4">
                 <ActionButtons
                   fileName={row.fileName}
+                  disabled={row.parsingStatus === 'processing'}
                   onDelete={
-                    onDelete ? () => onDelete(row.id, row.fileName) : undefined
+                    row.parsingStatus === 'processing'
+                      ? undefined
+                      : onDelete
+                      ? () => onDelete(row.id, row.fileName)
+                      : undefined
                   }
                 />
               </TableCell>
