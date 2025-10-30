@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { getDocuments, getDocumentById } from "./_actions";
+import { getDocuments, getDocumentById, deleteDocument } from "./_actions";
 import type { Document } from "./_actions";
 import type { UploadedFileInfo } from "../_components/uploadDocumentModal/types";
 import {
@@ -570,6 +570,32 @@ export function DocumentsContent() {
         ) : (
           <DataTable
             data={tableData}
+            onDelete={async (fileId, fileName) => {
+              const toastId = toast.loading("Deleting document...", {
+                description: fileName,
+                duration: Infinity,
+              });
+
+              try {
+                await deleteDocument(fileId);
+
+                // Optimistically remove from UI
+                setDocuments((prev) => prev.filter((d) => d.fileId !== fileId));
+
+                toast.success("Document deleted", {
+                  id: toastId,
+                  description: fileName,
+                  duration: 3000,
+                });
+              } catch (e: any) {
+                toast.error("Failed to delete document", {
+                  id: toastId,
+                  description:
+                    e?.message || "An error occurred while deleting the file",
+                  duration: 4000,
+                });
+              }
+            }}
             onFileClick={async (fileId) => {
               console.log("🟢 DocumentsContent: onFileClick handler called", {
                 fileId,
@@ -681,10 +707,23 @@ export function DocumentsContent() {
                     duration: 4000,
                   });
                 }
-              } catch (e) {
+              } catch (e: any) {
                 console.error("❌ DocumentsContent: getDocumentById error", e);
 
-                // Update toast to error
+                // Check if it's a 400 status code
+                if (e?.status === 400) {
+                  toast.error("Bad Request", {
+                    id: toastId,
+                    description:
+                      e?.message ||
+                      "Invalid request. Please check the file ID and try again.",
+                    duration: 5000,
+                  });
+                  // Don't open anything for 400 errors
+                  return;
+                }
+
+                // Handle other errors
                 toast.error("Failed to retrieve file", {
                   id: toastId,
                   description:

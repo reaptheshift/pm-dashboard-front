@@ -215,11 +215,18 @@ export async function getDocumentById(documentsId: string) {
         status: response.status,
         errorText,
       });
-      throw new Error(
-        `Failed to fetch document: ${response.status}$${
+
+      // Create error object with status code for client-side handling
+      const error: any = new Error(
+        `Failed to fetch document: ${response.status}${
           errorText ? ` - ${errorText}` : ""
         }`
       );
+      error.status = response.status;
+      error.statusText = response.statusText;
+      error.message =
+        errorText || `HTTP ${response.status} ${response.statusText}`;
+      throw error;
     }
 
     const result = await response.json();
@@ -300,6 +307,54 @@ export async function getDocuments(): Promise<DocumentsResponse> {
         "Cannot connect to Xano API. Please verify your connection and authentication."
       );
     }
+    throw error;
+  }
+}
+
+// Delete a document by ID (secured)
+export async function deleteDocument(
+  documentsId: string
+): Promise<{ success: boolean }> {
+  try {
+    if (!documentsId) {
+      throw new Error("Document ID is required");
+    }
+
+    const { getAuthToken } = await import("@/lib/auth-server");
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required");
+    }
+
+    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
+      documentsId
+    )}`;
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-cache",
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      const message = `Failed to delete document: ${response.status}${
+        errorText ? ` - ${errorText}` : ""
+      }`;
+      const err: any = new Error(message);
+      err.status = response.status;
+      err.statusText = response.statusText;
+      err.message =
+        errorText || `HTTP ${response.status} ${response.statusText}`;
+      throw err;
+    }
+
+    return { success: true };
+  } catch (error) {
     throw error;
   }
 }
