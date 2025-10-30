@@ -157,10 +157,11 @@ export async function patchUserClient(
     console.log("📥 Response status:", response.status);
     console.log("📥 Response ok:", response.ok);
     console.log("📥 Response statusText:", response.statusText);
-    console.log(
-      "📥 Response headers:",
-      Object.fromEntries(response.headers.entries())
-    );
+    const responseHeadersLog: Record<string, string> = {}
+    response.headers.forEach((value, key) => {
+      responseHeadersLog[key] = value
+    })
+    console.log("📥 Response headers:", responseHeadersLog)
 
     if (!response.ok) {
       let errorData = {};
@@ -194,7 +195,11 @@ export async function patchUserClient(
         }
 
         // Log all headers
-        errorHeaders = Object.fromEntries(response.headers.entries());
+        const errorHeadersLog: Record<string, string> = {}
+        response.headers.forEach((value, key) => {
+          errorHeadersLog[key] = value
+        })
+        errorHeaders = errorHeadersLog
         console.error("❌ Response headers:", errorHeaders);
       } catch (e) {
         console.error("❌ Failed to read error response:", e);
