@@ -1,59 +1,44 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
 export type StatusType = "completed" | "processing" | "failed" | "uploaded";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Check, X } from "lucide-react";
 
 interface StatusBadgeProps {
   status: StatusType;
-  className?: string;
 }
 
 const statusConfig = {
   completed: {
-    bg: "bg-green-50",
-    border: "border-green-200",
-    text: "text-green-700",
-    dotColor: "bg-green-500",
-    label: "Completed",
+    variant: "success" as const,
+    icon: Check,
   },
   processing: {
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-700",
-    dotColor: "bg-blue-500",
-    label: "Processing",
-  },
-  uploaded: {
-    bg: "bg-yellow-50",
-    border: "border-yellow-200",
-    text: "text-yellow-700",
-    dotColor: "bg-yellow-500",
-    label: "Uploaded",
+    variant: "default" as const,
+    icon: Loader2,
   },
   failed: {
-    bg: "bg-red-50",
-    border: "border-red-200",
-    text: "text-red-700",
-    dotColor: "bg-red-500",
-    label: "Failed",
+    variant: "error" as const,
+    icon: X,
+  },
+  uploaded: {
+    variant: "default" as const,
+    icon: null,
   },
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status] || statusConfig.uploaded; // Fallback to uploaded if status not found
+export function StatusBadge({ status }: StatusBadgeProps) {
+  const config = statusConfig[status] || statusConfig.uploaded;
+  const Icon = config.icon;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium border",
-        config.bg,
-        config.border,
-        config.text,
-        className
+    <Badge variant={config.variant} className="flex items-center gap-1">
+      {Icon && (
+        <Icon
+          className={`w-3 h-3 ${
+            status === "processing" ? "animate-spin" : ""
+          }`}
+        />
       )}
-    >
-      <div className={cn("w-2 h-2 rounded-full", config.dotColor)} />
-      {config.label}
-    </span>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
   );
 }
