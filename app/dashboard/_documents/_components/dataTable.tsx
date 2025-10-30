@@ -112,7 +112,17 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
                         trigger={
                           <span
                             className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                            onClick={() => onFileClick && onFileClick(row.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log("🔵 DataTable: File name clicked (truncated)", {
+                                fileId: row.id,
+                                fileName: row.fileName,
+                                hasHandler: !!onFileClick,
+                              });
+                              if (onFileClick) {
+                                onFileClick(row.id);
+                              }
+                            }}
                           >
                             {truncateFileName(row.fileName)}
                           </span>
@@ -123,7 +133,17 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
                     ) : (
                       <span
                         className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                        onClick={() => onFileClick && onFileClick(row.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log("🔵 DataTable: File name clicked (full)", {
+                            fileId: row.id,
+                            fileName: row.fileName,
+                            hasHandler: !!onFileClick,
+                          });
+                          if (onFileClick) {
+                            onFileClick(row.id);
+                          }
+                        }}
                       >
                         {row.fileName || "Unnamed file"}
                       </span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useHash } from "@/hooks/useHash";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -84,6 +85,82 @@ export function DocumentsContent() {
       const uniqueNew = newDocuments.filter((d) => !existingIds.has(d.fileId));
       return [...prev, ...uniqueNew];
     });
+  };
+
+  // Handle PDF data - convert string to Blob and open/download
+  const handlePdfData = async (pdfDataString: string, fileName: string) => {
+    try {
+      console.log("📄 Handling PDF data:", {
+        fileName,
+        dataLength: pdfDataString.length,
+        preview: pdfDataString.substring(0, 100),
+      });
+
+      let blob: Blob;
+
+      // Try to decode as base64 first (common for binary data in JSON)
+      try {
+        // Check if it looks like base64
+        const base64Pattern = /^[A-Za-z0-9+/=\s]+$/;
+        if (
+          pdfDataString.length > 100 &&
+          base64Pattern.test(pdfDataString.substring(0, 100))
+        ) {
+          // Decode base64 to binary
+          const binaryString = atob(pdfDataString.replace(/\s/g, ""));
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          blob = new Blob([bytes], { type: "application/pdf" });
+          console.log("📄 Decoded as base64");
+        } else {
+          throw new Error("Not base64");
+        }
+      } catch {
+        // Fallback: treat as raw binary string
+        // Convert string characters directly to bytes
+        const bytes = new Uint8Array(pdfDataString.length);
+        for (let i = 0; i < pdfDataString.length; i++) {
+          const charCode = pdfDataString.charCodeAt(i);
+          // Handle multi-byte characters (though PDF should be mostly single-byte)
+          if (charCode > 255) {
+            bytes[i] = 0; // Fallback for non-ASCII
+          } else {
+            bytes[i] = charCode;
+          }
+        }
+        blob = new Blob([bytes], { type: "application/pdf" });
+        console.log("📄 Treated as raw binary string");
+      }
+
+      // Create object URL
+      const url = URL.createObjectURL(blob);
+      console.log("📄 Created blob URL:", url);
+
+      // Try to open PDF in new tab
+      const newWindow = window.open(url, "_blank");
+      if (!newWindow) {
+        // If popup blocked, trigger download instead
+        console.log("📄 Popup blocked, triggering download");
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName.split("/").pop() || fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        console.log("📄 Opened PDF in new tab");
+      }
+
+      // Clean up URL after a delay (give time for browser to load)
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (error) {
+      console.error("❌ Error handling PDF data:", error);
+      throw error;
+    }
   };
 
   // Deletion handled separately; no client delete logic here
@@ -475,11 +552,69 @@ export function DocumentsContent() {
           <DataTable
             data={tableData}
             onFileClick={async (fileId) => {
+              console.log("🟢 DocumentsContent: onFileClick handler called", {
+                fileId,
+              });
+
+              // Show loading toast with progress bar
+              const toastId = toast.loading(
+                "Requesting file from secure server...",
+                {
+                  description: (
+                    <div className="space-y-2 mt-1">
+                      <p className="text-sm text-gray-600">
+                        Fetching document securely from server
+                      </p>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full animate-progress" />
+                      </div>
+                    </div>
+                  ),
+                  duration: Infinity, // Keep open until we dismiss it
+                }
+              );
+
               try {
                 // Call secured Xano document details API when filename is clicked
-                await getDocumentById(fileId)
+                console.log("🟡 DocumentsContent: Calling getDocumentById...");
+                const result = await getDocumentById(fileId);
+                console.log(
+                  "✅ DocumentsContent: getDocumentById success",
+                  result
+                );
+
+                // Update toast to success
+                toast.success("File retrieved successfully", {
+                  id: toastId,
+                  description: "Opening document...",
+                  duration: 2000,
+                });
+
+                // Handle PDF download/viewing if data is present
+                if (
+                  result?.file?.data &&
+                  result?.file?.mime === "application/pdf"
+                ) {
+                  const fileName =
+                    result?.file?.name || `document-${fileId}.pdf`;
+                  await handlePdfData(result.file.data, fileName);
+                } else if (result?.data && result?.mime === "application/pdf") {
+                  // Fallback to old response structure
+                  const fileName = result?.name || `document-${fileId}.pdf`;
+                  await handlePdfData(result.data, fileName);
+                }
               } catch (e) {
-                // No-op on error to avoid interrupting UI
+                console.error("❌ DocumentsContent: getDocumentById error", e);
+
+                // Update toast to error
+                toast.error("Failed to retrieve file", {
+                  id: toastId,
+                  description:
+                    e instanceof Error
+                      ? e.message
+                      : "An error occurred while fetching the document",
+                  duration: 4000,
+                });
               }
             }}
           />

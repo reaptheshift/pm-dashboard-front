@@ -170,20 +170,28 @@ export async function getAuthTokenForClient(): Promise<string | null> {
 
 // Get single document details from Xano by ID
 export async function getDocumentById(documentsId: string) {
+  console.log("🟠 getDocumentById: Called with documentsId", documentsId);
   try {
     if (!documentsId) {
       throw new Error("Document ID is required");
     }
 
     const { getAuthToken } = await import("@/lib/auth-server");
+    console.log("🟠 getDocumentById: Getting auth token...");
     const token = await getAuthToken();
     if (!token) {
+      console.error("🟠 getDocumentById: No auth token found");
       throw new Error("Authentication required");
     }
+    console.log(
+      "🟠 getDocumentById: Auth token obtained",
+      token.substring(0, 20) + "..."
+    );
 
     const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
       documentsId
     )}`;
+    console.log("🟠 getDocumentById: Fetching URL", url);
 
     const response = await fetch(url, {
       method: "GET",
@@ -195,8 +203,18 @@ export async function getDocumentById(documentsId: string) {
       signal: AbortSignal.timeout(30000),
     });
 
+    console.log(
+      "🟠 getDocumentById: Response status",
+      response.status,
+      response.statusText
+    );
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
+      console.error("🟠 getDocumentById: Response not OK", {
+        status: response.status,
+        errorText,
+      });
       throw new Error(
         `Failed to fetch document: ${response.status}$${
           errorText ? ` - ${errorText}` : ""
@@ -204,8 +222,11 @@ export async function getDocumentById(documentsId: string) {
       );
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log("🟠 getDocumentById: Response data", result);
+    return result;
   } catch (error) {
+    console.error("🟠 getDocumentById: Error caught", error);
     throw error;
   }
 }
