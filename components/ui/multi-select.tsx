@@ -93,7 +93,7 @@ export function MultiSelect({
               {displayBadges.map((option) => (
                 <Badge
                   key={option.value}
-                  variant="secondary"
+                  variant="default"
                   className="mr-1 mb-1"
                 >
                   {option.label}
@@ -121,7 +121,7 @@ export function MultiSelect({
                 </Badge>
               ))}
               {remainingCount > 0 && (
-                <Badge variant="secondary" className="mr-1 mb-1">
+                <Badge variant="default" className="mr-1 mb-1">
                   +{remainingCount} more
                 </Badge>
               )}

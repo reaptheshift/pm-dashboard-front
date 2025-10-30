@@ -10,35 +10,35 @@ const statusConfig = {
   completed: {
     variant: "success" as const,
     icon: Check,
+    label: "Completed",
   },
   processing: {
-    variant: "default" as const,
+    variant: "info" as const,
     icon: Loader2,
+    label: "Processing",
   },
   failed: {
-    variant: "error" as const,
+    variant: "danger" as const,
     icon: X,
-  },
-  uploaded: {
-    variant: "default" as const,
-    icon: null,
+    label: "Failed",
   },
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status] || statusConfig.uploaded;
-  const Icon = config.icon;
-
+  const config = statusConfig[status as keyof typeof statusConfig];
   return (
-    <Badge variant={config.variant} className="flex items-center gap-1">
-      {Icon && (
-        <Icon
-          className={`w-3 h-3 ${
-            status === "processing" ? "animate-spin" : ""
-          }`}
+    <Badge
+      variant={
+        config.variant as "success" | "warning" | "default" | "info" | "danger"
+      }
+      className="flex items-center gap-1 w-fit"
+    >
+      {config.icon && (
+        <config.icon
+          className={`w-3 h-3 ${status === "processing" ? "animate-spin" : ""}`}
         />
       )}
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {config.label.charAt(0).toUpperCase() + config.label.slice(1)}
     </Badge>
   );
 }

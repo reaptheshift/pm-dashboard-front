@@ -35,7 +35,12 @@ interface DataTableProps {
   onFileClick?: (fileId: string) => void;
 }
 
-export function DataTable({ data, className, onDelete, onFileClick }: DataTableProps) {
+export function DataTable({
+  data,
+  className,
+  onDelete,
+  onFileClick,
+}: DataTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -101,18 +106,21 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
                 <div className="flex items-center gap-3">
                   <FileTypeIcon type={row.fileType} />
                   <div className="flex flex-col">
-                  {row.fileName && row.fileName.length > 20 ? (
+                    {row.fileName && row.fileName.length > 20 ? (
                       <InfoPopover
                         trigger={
                           <span
                             className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log("🔵 DataTable: File name clicked (truncated)", {
-                                fileId: row.id,
-                                fileName: row.fileName,
-                                hasHandler: !!onFileClick,
-                              });
+                              console.log(
+                                "🔵 DataTable: File name clicked (truncated)",
+                                {
+                                  fileId: row.id,
+                                  fileName: row.fileName,
+                                  hasHandler: !!onFileClick,
+                                }
+                              );
                               if (onFileClick) {
                                 onFileClick(row.id);
                               }
@@ -129,11 +137,14 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
                         className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          console.log("🔵 DataTable: File name clicked (full)", {
-                            fileId: row.id,
-                            fileName: row.fileName,
-                            hasHandler: !!onFileClick,
-                          });
+                          console.log(
+                            "🔵 DataTable: File name clicked (full)",
+                            {
+                              fileId: row.id,
+                              fileName: row.fileName,
+                              hasHandler: !!onFileClick,
+                            }
+                          );
                           if (onFileClick) {
                             onFileClick(row.id);
                           }
@@ -155,13 +166,9 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
               {/* Project Column */}
               <TableCell className="px-6 py-4 p-4">
                 {row.projectName ? (
-                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                    {row.projectName}
-                  </Badge>
+                  <Badge variant="default">{row.projectName}</Badge>
                 ) : (
-                  <Badge className="bg-gray-50 text-gray-700 border-gray-200">
-                    No Project
-                  </Badge>
+                  <Badge variant="default">No Project</Badge>
                 )}
               </TableCell>
 
@@ -190,9 +197,9 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
               <TableCell className="px-4 py-4 p-4">
                 <ActionButtons
                   fileName={row.fileName}
-                  disabled={row.parsingStatus === 'processing'}
+                  disabled={row.parsingStatus === "processing"}
                   onDelete={
-                    row.parsingStatus === 'processing'
+                    row.parsingStatus === "processing"
                       ? undefined
                       : onDelete
                       ? () => onDelete(row.id, row.fileName)
