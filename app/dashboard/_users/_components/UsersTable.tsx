@@ -162,7 +162,10 @@ export function UsersTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge variant={getStatusBadgeVariant(user.status)} className="flex items-center gap-1">
+                    <Badge
+                      variant={getStatusBadgeVariant(user.status)}
+                      className="w-fit flex items-center gap-1"
+                    >
                       <div className="w-2 h-2 rounded-full bg-current"></div>
                       {user.status}
                     </Badge>
@@ -180,10 +183,7 @@ export function UsersTable({
                       {user.projects.length > 2 && (
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Badge
-                              variant="default"
-                              className="cursor-pointer"
-                            >
+                            <Badge variant="default" className="cursor-pointer">
                               +{user.projects.length - 2}
                             </Badge>
                           </PopoverTrigger>

@@ -586,7 +586,7 @@ export function ProjectsTable({
                     <TableCell className="px-6 py-4">
                       <Badge
                         variant={getStatusBadgeVariant(project.status)}
-                        className="flex items-center gap-1"
+                        className="w-fit flex items-center gap-1"
                       >
                         <div className="w-2 h-2 rounded-full bg-current"></div>
                         {project.status}
