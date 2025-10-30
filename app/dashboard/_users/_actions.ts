@@ -58,11 +58,11 @@ export interface CreateFieldWorkerResponse {
 
 // Get auth token for client-side use
 export async function getAuthTokenForClient(): Promise<string | null> {
-	try {
-		return await getAuthToken()
-	} catch (error) {
-		return null
-	}
+  try {
+    return await getAuthToken();
+  } catch (error) {
+    return null;
+  }
 }
 
 // Get all users
@@ -144,8 +144,6 @@ export async function updateUser(
   user_id: number,
   userData: UpdateFieldWorkerData
 ): Promise<FieldWorker> {
-  console.log("🟣 updateUser - Received params:", { user_id, userData });
-
   try {
     const authToken = await getAuthToken();
 
@@ -162,21 +160,11 @@ export async function updateUser(
       modified_at: Date.now(),
     };
 
-    // Only include projects if it's an array with items
-    if (projects && Array.isArray(projects) && projects.length > 0) {
-      updateData.projects = projects;
-    }
-
-    console.log("🟣 updateUser - Projects in userData:", projects);
-    console.log("🟣 updateUser - Update data to send:", updateData);
-    console.log("🟣 updateUser - JSON payload:", JSON.stringify(updateData));
-    console.log(
-      "🟣 updateUser - API URL:",
-      `${XANO_BASE_URL}/field_workers/${user_id}`
-    );
+    // Always include projects; default to empty array to clear relations when empty
+    updateData.projects = Array.isArray(projects) ? projects : [];
 
     const response = await fetch(`${XANO_BASE_URL}/field_workers/${user_id}`, {
-      method: "POST",
+      method: "PATCH",
       headers: {
         Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
@@ -184,28 +172,14 @@ export async function updateUser(
       body: JSON.stringify(updateData),
     });
 
-    console.log("🟣 updateUser - Response status:", response.status);
-    console.log("🟣 updateUser - Response ok:", response.ok);
-
     if (!response.ok) {
       let errorData = {};
       let errorText = "";
 
       try {
         errorText = await response.text();
-        console.error("🟣 updateUser - Error response text:", errorText);
         errorData = JSON.parse(errorText);
-        console.error("🟣 updateUser - Error response data:", errorData);
-      } catch (e) {
-        console.error("🟣 updateUser - Failed to parse error response:", e);
-        console.error("🟣 updateUser - Raw error text:", errorText);
-      }
-
-      console.error("🟣 updateUser - Response status:", response.status);
-      console.error(
-        "🟣 updateUser - Response status text:",
-        response.statusText
-      );
+      } catch (e) {}
 
       const errorMessage =
         (errorData as any).message ||
@@ -216,11 +190,8 @@ export async function updateUser(
     }
 
     const updatedUser = await response.json();
-    console.log("✅ updateUser - Successfully updated user:", updatedUser);
     return updatedUser;
   } catch (error: any) {
-    console.error("❌ updateUser - Catch block error:", error);
-    console.error("❌ updateUser - Error message:", error.message);
     throw new Error(error.message || "Failed to update user");
   }
 }

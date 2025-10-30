@@ -109,30 +109,30 @@ export function EditUserDialog({ user, onUpdate }: EditUserDialogProps) {
         role: formData.role,
       };
 
-      console.log("🔵 EditUserDialog - Initial formData:", formData);
-      console.log("🔵 EditUserDialog - Initial updateData:", updateData);
+      
 
       if (formData.password) {
         updateData.password = formData.password;
       }
 
-      // Always include projects array - send empty array if no projects selected
+      // Always include projects array
       updateData.projects = formData.projectIds.map((id) => parseInt(id, 10));
 
-      console.log(
-        "🔵 EditUserDialog - Final updateData before API call:",
-        updateData
-      );
-      console.log("🔵 EditUserDialog - User ID:", user.id);
+      // Enforce at least one project
+      if (!updateData.projects || updateData.projects.length === 0) {
+        toast.error("At least one project is required")
+        setIsLoading(false)
+        return
+      }
+
+      
 
       await onUpdate(user.id, updateData);
 
-      console.log("✅ EditUserDialog - Update successful");
       toast.success("User updated successfully");
       setOpen(false);
       setFormData({ ...formData, password: "" }); // Clear password field
     } catch (error: any) {
-      console.error("❌ EditUserDialog - Update failed:", error);
       toast.error("Failed to update user", {
         description: error.message || "There was an error updating the user",
       });

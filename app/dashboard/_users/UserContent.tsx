@@ -15,10 +15,9 @@ import {
 	createFieldWorker,
 	getFieldWorkers,
 	deleteUser,
-	getAuthTokenForClient,
 	type FieldWorker as ApiUser,
 } from './_actions'
-import { patchUserClient } from './patch-temp'
+import { updateUser } from './_actions'
 
 interface User {
   id: string;
@@ -155,6 +154,15 @@ export function UserContent({
         ? data.projectIds.map((id: string) => parseInt(id, 10))
         : [];
 
+      // Enforce at least one project for creation
+      if (!projects || projects.length === 0) {
+        toast.error("Select at least one project", {
+          description: "A user must be assigned to at least one project",
+        })
+        setIsCreatingUser(false)
+        return
+      }
+
       // Call the createFieldWorker server action
       const response = await createFieldWorker({
         name: data.fullName,
@@ -211,19 +219,8 @@ export function UserContent({
 
 	const handleUpdateUser = async (userId: string, data: any) => {
 		try {
-			// Get auth token for client-side patch
-			const authToken = await getAuthTokenForClient()
-
-			if (!authToken) {
-				throw new Error('Authentication required')
-			}
-
-			// Call the client-side patch function
-			const updatedUser = await patchUserClient(
-				parseInt(userId),
-				data,
-				authToken
-			)
+			// Use server action to update user
+			const updatedUser = await updateUser(parseInt(userId), data)
 
 			// Transform the updated user to match our User interface
 			const transformedUser: User = {

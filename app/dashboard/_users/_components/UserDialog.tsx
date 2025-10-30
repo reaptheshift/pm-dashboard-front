@@ -24,6 +24,7 @@ import {
   type MultiSelectOption,
 } from "@/components/ui/multi-select";
 import { getProjects } from "../../_projects/_actions";
+import { toast } from "sonner";
 
 interface UserDialogProps {
   open: boolean;
@@ -86,32 +87,44 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
 
     // Validate required fields
     if (!formData.fullName.trim()) {
-      alert("Full name is required");
+      toast.error("Full name is required");
       return;
     }
     if (!formData.email.trim()) {
-      alert("Email is required");
+      toast.error("Email is required");
       return;
     }
     if (!formData.password.trim()) {
-      alert("Password is required");
+      toast.error("Password is required");
       return;
     }
     if (!formData.confirmPassword.trim()) {
-      alert("Confirm password is required");
+      toast.error("Confirm password is required");
+      return;
+    }
+
+    // Require at least one project selected
+    if (formData.projectIds.length === 0) {
+      toast.error("Please select at least one project");
+      return;
+    }
+
+    // Block creation if there are zero projects in the system
+    if (projectOptions.length === 0) {
+      toast.error("No projects available. Create a project first.");
       return;
     }
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      alert("Please enter a valid email address");
+      toast.error("Please enter a valid email address");
       return;
     }
 
@@ -326,15 +339,14 @@ export function UserDialog({ open, onOpenChange, onSubmit }: UserDialogProps) {
                   ? "Loading projects..."
                   : projectOptions.length === 0
                   ? "No projects available"
-                  : "Select projects (optional)"
+                  : "Select at least one project"
               }
               disabled={isLoadingProjects || projectOptions.length === 0}
               maxCount={2}
               searchable={true}
             />
             <p className="text-xs text-gray-500">
-              Select projects to assign this user to. You can leave this empty
-              and assign projects later.
+              At least one project is required to create a user.
             </p>
           </div>
         </form>
