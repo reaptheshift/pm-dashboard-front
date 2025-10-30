@@ -50,6 +50,17 @@ export function DocumentsContent() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  // Format date-time as dd/MM/yyyy HH:mm
+  const formatDateTime = (value: string | Date): string => {
+    const d = typeof value === 'string' ? new Date(value) : value
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
+
   // Load documents on mount
   useEffect(() => {
     loadDocuments();
@@ -248,7 +259,7 @@ export function DocumentsContent() {
           : "Accepting Bids",
       fileType: getFileType(doc.fileType, doc.fileName),
       size: formatFileSize(doc.fileSize),
-      uploaded: new Date(doc.uploadTimestamp).toLocaleDateString("en-GB"),
+      uploaded: formatDateTime(doc.uploadTimestamp),
       projectName: doc.projectName,
       parsingStatus: (() => {
         const status = doc.processingStatus.toLowerCase();
@@ -637,8 +648,8 @@ export function DocumentsContent() {
       )}
 
       {/* Documents Table */}
-      {shouldShowDocuments &&
-        (error ? (
+      {shouldShowDocuments && (
+        error ? (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
@@ -649,6 +660,27 @@ export function DocumentsContent() {
                 Retry
               </button>
             </div>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-xl p-12 shadow-sm text-center">
+            <svg
+              className="w-12 h-12 text-gray-400 mx-auto mb-4"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No documents yet
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Upload your first documents to get started.
+            </p>
+            <UploadDocumentModalWrapper onUploadComplete={handleUploadComplete}>
+              <Button className="bg-gray-900 text-white hover:bg-gray-800">
+                Upload Documents
+              </Button>
+            </UploadDocumentModalWrapper>
           </div>
         ) : (
           <DataTable
@@ -818,7 +850,8 @@ export function DocumentsContent() {
               }
             }}
           />
-        ))}
+        )
+      )}
 
       {/* PDF Viewer Modal */}
       <Dialog open={pdfViewerOpen} onOpenChange={setPdfViewerOpen}>
