@@ -358,3 +358,54 @@ export async function deleteDocument(
     throw error;
   }
 }
+
+// Purge multiple documents by IDs (secured)
+export async function purgeDocuments(
+  documentsIds: string[]
+): Promise<{ success: boolean }> {
+  try {
+    if (!Array.isArray(documentsIds) || documentsIds.length === 0) {
+      throw new Error("At least one document ID is required");
+    }
+
+    const { getAuthToken } = await import("@/lib/auth-server");
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required");
+    }
+
+    // API requires a {documents_id: uuid[]} body. Endpoint path still
+    // includes a documents_id param; we'll reuse the first id there.
+    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
+      documentsIds[0]
+    )}`;
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-cache",
+      body: JSON.stringify({ documents_id: documentsIds }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      const message = `Failed to purge documents: ${response.status}${
+        errorText ? ` - ${errorText}` : ""
+      }`;
+      const err: any = new Error(message);
+      err.status = response.status;
+      err.statusText = response.statusText;
+      err.message =
+        errorText || `HTTP ${response.status} ${response.statusText}`;
+      throw err;
+    }
+
+    return { success: true };
+  } catch (error) {
+    throw error;
+  }
+}
