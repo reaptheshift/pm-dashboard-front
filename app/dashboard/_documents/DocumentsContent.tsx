@@ -17,12 +17,21 @@ import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
 import { getDocuments, getDocumentById } from "./_actions";
 import type { Document } from "./_actions";
 import type { UploadedFileInfo } from "../_components/uploadDocumentModal/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function DocumentsContent() {
   const { hash } = useHash("#Documents");
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string>("");
 
   // Format file size
   const formatFileSize = (bytes: number): string => {
@@ -87,78 +96,93 @@ export function DocumentsContent() {
     });
   };
 
-  // Handle PDF data - convert string to Blob and open/download
-  const handlePdfData = async (pdfDataString: string, fileName: string) => {
+  // Handle file download - either from URL or raw data
+  const handleFileDownload = async (
+    fileData: any,
+    fileName: string,
+    fileType: string = "application/pdf"
+  ) => {
     try {
-      console.log("📄 Handling PDF data:", {
-        fileName,
-        dataLength: pdfDataString.length,
-        preview: pdfDataString.substring(0, 100),
-      });
+      // Option 1: Check if there's a download URL in the response
+      const downloadUrl =
+        fileData?.download_url ||
+        fileData?.url ||
+        fileData?.s3_url ||
+        fileData?.presigned_url ||
+        fileData?.temp_url;
+
+      if (downloadUrl) {
+        console.log("📥 Using download URL:", downloadUrl);
+        // Open/download from URL
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // Option 2: Create blob from raw data and download immediately
+      console.log("📥 Creating blob from raw data");
+      const rawData =
+        typeof fileData === "string" ? fileData : fileData?.data || fileData;
+
+      if (!rawData) {
+        throw new Error("No file data available");
+      }
 
       let blob: Blob;
 
-      // Try to decode as base64 first (common for binary data in JSON)
+      // Try base64 decode first
       try {
-        // Check if it looks like base64
-        const base64Pattern = /^[A-Za-z0-9+/=\s]+$/;
-        if (
-          pdfDataString.length > 100 &&
-          base64Pattern.test(pdfDataString.substring(0, 100))
-        ) {
-          // Decode base64 to binary
-          const binaryString = atob(pdfDataString.replace(/\s/g, ""));
+        const cleaned = String(rawData).replace(/\s/g, "");
+        const base64Pattern = /^[A-Za-z0-9+/=]+$/;
+        if (base64Pattern.test(cleaned) && cleaned.length > 0) {
+          const binaryString = atob(cleaned);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          blob = new Blob([bytes], { type: "application/pdf" });
-          console.log("📄 Decoded as base64");
+          blob = new Blob([bytes], { type: fileType });
+          console.log("✅ Decoded as base64");
         } else {
           throw new Error("Not base64");
         }
       } catch {
-        // Fallback: treat as raw binary string
-        // Convert string characters directly to bytes
-        const bytes = new Uint8Array(pdfDataString.length);
-        for (let i = 0; i < pdfDataString.length; i++) {
-          const charCode = pdfDataString.charCodeAt(i);
-          // Handle multi-byte characters (though PDF should be mostly single-byte)
-          if (charCode > 255) {
-            bytes[i] = 0; // Fallback for non-ASCII
-          } else {
-            bytes[i] = charCode;
-          }
+        // Treat as raw string - convert to bytes
+        console.log("📥 Treating as raw binary string");
+        const dataString = String(rawData);
+        const bytes = new Uint8Array(dataString.length);
+        for (let i = 0; i < dataString.length; i++) {
+          const charCode = dataString.charCodeAt(i);
+          bytes[i] = charCode <= 255 ? charCode : 0;
         }
-        blob = new Blob([bytes], { type: "application/pdf" });
-        console.log("📄 Treated as raw binary string");
+        blob = new Blob([bytes], { type: fileType });
       }
 
-      // Create object URL
+      // Trigger download immediately
       const url = URL.createObjectURL(blob);
-      console.log("📄 Created blob URL:", url);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      // Try to open PDF in new tab
-      const newWindow = window.open(url, "_blank");
-      if (!newWindow) {
-        // If popup blocked, trigger download instead
-        console.log("📄 Popup blocked, triggering download");
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName.split("/").pop() || fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        console.log("📄 Opened PDF in new tab");
-      }
-
-      // Clean up URL after a delay (give time for browser to load)
+      // Clean up after a delay
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 1000);
+
+      console.log("✅ File download triggered");
     } catch (error) {
-      console.error("❌ Error handling PDF data:", error);
+      console.error("❌ Error downloading file:", error);
+      toast.error("Failed to download file", {
+        description: error instanceof Error ? error.message : "Unknown error",
+        duration: 4000,
+      });
       throw error;
     }
   };
@@ -586,22 +610,81 @@ export function DocumentsContent() {
                 // Update toast to success
                 toast.success("File retrieved successfully", {
                   id: toastId,
-                  description: "Opening document...",
+                  description: "Preparing download...",
                   duration: 2000,
                 });
 
-                // Handle PDF download/viewing if data is present
-                if (
-                  result?.file?.data &&
-                  result?.file?.mime === "application/pdf"
-                ) {
-                  const fileName =
-                    result?.file?.name || `document-${fileId}.pdf`;
-                  await handlePdfData(result.file.data, fileName);
-                } else if (result?.data && result?.mime === "application/pdf") {
-                  // Fallback to old response structure
-                  const fileName = result?.name || `document-${fileId}.pdf`;
-                  await handlePdfData(result.data, fileName);
+                // Extract file name from file_metadata (as per user requirements)
+                const fileName =
+                  result?.file_metadata?.file_name ||
+                  result?.file?.name ||
+                  result?.name ||
+                  `document-${fileId}.pdf`;
+
+                // Extract file type/mime
+                const fileType =
+                  result?.file_metadata?.file_mime ||
+                  result?.file_metadata?.file_type ||
+                  result?.file?.mime ||
+                  result?.mime ||
+                  "application/pdf";
+
+                // Check for presigned S3 URL first (new expected format: file.url)
+                const downloadUrl =
+                  result?.file?.url ||
+                  result?.file_metadata?.download_url ||
+                  result?.file_metadata?.s3_url ||
+                  result?.file_metadata?.presigned_url ||
+                  result?.download_url ||
+                  result?.s3_url ||
+                  result?.presigned_url;
+
+                if (downloadUrl) {
+                  // Use the presigned S3 URL directly
+                  console.log("📥 Using presigned S3 URL:", downloadUrl);
+
+                  // Check expiration if available
+                  const expiresAt = result?.file?.expires_at;
+                  if (expiresAt) {
+                    const expirationTime = parseInt(String(expiresAt));
+                    const currentTime = Date.now();
+                    if (currentTime >= expirationTime) {
+                      toast.error("Download link expired", {
+                        id: toastId,
+                        description:
+                          "The download link has expired. Please try again.",
+                        duration: 4000,
+                      });
+                      return;
+                    }
+                    console.log(
+                      "✅ URL valid until:",
+                      new Date(expirationTime).toLocaleString()
+                    );
+                  }
+
+                  // Open PDF in modal dialog with iframe
+                  setPdfUrl(downloadUrl);
+                  setPdfFileName(fileName);
+                  setPdfViewerOpen(true);
+
+                  toast.success("File loaded", {
+                    id: toastId,
+                    description: `Opening ${fileName} in viewer`,
+                    duration: 2000,
+                  });
+                } else if (result?.file?.data || result?.data) {
+                  // Fallback: Use raw file data if URL not available
+                  console.log("⚠️ No URL found, using raw data as fallback");
+                  const fileData = result?.file?.data || result?.data;
+                  await handleFileDownload(fileData, fileName, fileType);
+                } else {
+                  toast.error("No file URL or data found", {
+                    id: toastId,
+                    description:
+                      "The response does not contain a file URL or file data",
+                    duration: 4000,
+                  });
                 }
               } catch (e) {
                 console.error("❌ DocumentsContent: getDocumentById error", e);
@@ -619,6 +702,27 @@ export function DocumentsContent() {
             }}
           />
         ))}
+
+      {/* PDF Viewer Modal */}
+      <Dialog open={pdfViewerOpen} onOpenChange={setPdfViewerOpen}>
+        <DialogContent className="max-w-[98vw] w-[98vw] max-h-[98vh] h-[98vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <DialogTitle className="text-lg font-semibold">
+              {pdfFileName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden px-6 py-6 min-h-0">
+            {pdfUrl && (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full border-0 rounded-lg shadow-sm"
+                title={pdfFileName}
+                allow="fullscreen"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
