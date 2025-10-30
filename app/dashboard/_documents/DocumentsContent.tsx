@@ -14,7 +14,12 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
-import { getDocuments, getDocumentById, deleteDocument, purgeDocuments } from "./_actions";
+import {
+  getDocuments,
+  getDocumentById,
+  deleteDocument,
+  purgeDocuments,
+} from "./_actions";
 import type { Document } from "./_actions";
 import type { UploadedFileInfo } from "../_components/uploadDocumentModal/types";
 import {
@@ -307,9 +312,13 @@ export function DocumentsContent() {
               onClick={() => setPurgeOpen(true)}
               disabled={documents.length === 0 || isPurging}
               className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: '#dc2626' }}
-              title={documents.length === 0 ? 'No documents to purge' : 'Purge all documents'}
-           >
+              style={{ backgroundColor: "#dc2626" }}
+              title={
+                documents.length === 0
+                  ? "No documents to purge"
+                  : "Purge all documents"
+              }
+            >
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -323,15 +332,20 @@ export function DocumentsContent() {
                   d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M19 13a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              Purge
+              ⚠️ Purge
             </button>
             <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
-                <DialogTitle className="text-red-600">Purge all data</DialogTitle>
+                <DialogTitle className="text-red-600">⚠️ Purge all data</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 text-gray-700">
-                <p className="font-medium">This action will permanently delete all documents.</p>
-                <p>This includes every item listed in the Documents table. This cannot be undone.</p>
+                <p className="font-medium">
+                  This action will permanently delete all documents.
+                </p>
+                <p>
+                  This includes every item listed in the Documents table. This
+                  cannot be undone.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <button
@@ -342,30 +356,35 @@ export function DocumentsContent() {
                 </button>
                 <button
                   onClick={async () => {
-                    if (documents.length === 0 || isPurging) return
-                    const ids = documents.map((d) => d.fileId)
-                    const toastId = toast.loading('Purging all documents...', { duration: Infinity })
-                    setIsPurging(true)
+                    if (documents.length === 0 || isPurging) return;
+                    const ids = documents.map((d) => d.fileId);
+                    const toastId = toast.loading("Purging all documents...", {
+                      duration: Infinity,
+                    });
+                    setIsPurging(true);
                     try {
-                      await purgeDocuments(ids)
-                      setDocuments([])
-                      setPurgeOpen(false)
-                      toast.success('All documents purged', { id: toastId, duration: 3000 })
-                    } catch (e: any) {
-                      toast.error('Failed to purge documents', {
+                      await purgeDocuments(ids);
+                      setDocuments([]);
+                      setPurgeOpen(false);
+                      toast.success("All documents purged", {
                         id: toastId,
-                        description: e?.message || 'Unexpected error',
+                        duration: 3000,
+                      });
+                    } catch (e: any) {
+                      toast.error("Failed to purge documents", {
+                        id: toastId,
+                        description: e?.message || "Unexpected error",
                         duration: 4000,
-                      })
+                      });
                     } finally {
-                      setIsPurging(false)
+                      setIsPurging(false);
                     }
                   }}
                   disabled={isPurging}
                   className="px-4 py-2 rounded-lg text-white"
-                  style={{ backgroundColor: '#dc2626' }}
+                  style={{ backgroundColor: "#dc2626" }}
                 >
-                  {isPurging ? 'Purging...' : 'Yes, purge all'}
+                  {isPurging ? "Purging..." : "Yes, purge all"}
                 </button>
               </div>
             </DialogContent>
