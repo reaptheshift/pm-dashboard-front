@@ -49,11 +49,11 @@ export async function patchUserClient(
 
   try {
     // Try to get token if not provided
-    let token = authToken;
+    let token: string | undefined = authToken;
 
     if (!token) {
       console.log("🔍 Attempting to get token from cookies...");
-      token = getAuthTokenFromClient();
+      token = getAuthTokenFromClient() ?? undefined;
       console.log(
         "🔍 Token from cookies:",
         token ? `${token.substring(0, 20)}...` : "Not found"
