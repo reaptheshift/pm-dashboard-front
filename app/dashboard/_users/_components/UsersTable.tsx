@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -50,18 +49,20 @@ export function UsersTable({
   onCreateUser,
   onUpdate,
 }: UsersTableProps) {
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleBadgeVariant = (
+    role: string
+  ): "default" | "success" | "warning" | "info" | "danger" => {
     switch (role) {
       case "project_manager":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "info";
       case "field_worker":
-        return "bg-red-50 text-red-700 border-red-200";
+        return "danger";
       case "admin":
-        return "bg-purple-50 text-purple-700 border-purple-200";
+        return "default";
       case "manager":
-        return "bg-orange-50 text-orange-700 border-orange-200";
+        return "warning";
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "default";
     }
   };
 
@@ -80,16 +81,18 @@ export function UsersTable({
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeVariant = (
+    status: string
+  ): "default" | "success" | "warning" | "info" | "danger" => {
     switch (status) {
       case "Active":
-        return "bg-green-50 text-green-700 border-green-200";
+        return "success";
       case "Invited":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "info";
       case "Inactive":
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "default";
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "default";
     }
   };
 
@@ -154,13 +157,13 @@ export function UsersTable({
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge className={`${getRoleBadgeColor(user.role)}`}>
+                    <Badge variant={getRoleBadgeVariant(user.role)}>
                       {formatRoleDisplay(user.role)}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge className={`${getStatusBadgeColor(user.status)}`}>
-                      <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
+                    <Badge variant={getStatusBadgeVariant(user.status)} className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-current"></div>
                       {user.status}
                     </Badge>
                   </TableCell>
@@ -169,8 +172,7 @@ export function UsersTable({
                       {user.projects.slice(0, 2).map((project, index) => (
                         <Badge
                           key={`${project.id}-${project.relationId || index}`}
-                          variant="outline"
-                          className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200"
+                          variant="info"
                         >
                           {project.name}
                         </Badge>
@@ -179,8 +181,8 @@ export function UsersTable({
                         <Popover>
                           <PopoverTrigger asChild>
                             <Badge
-                              variant="outline"
-                              className="text-xs px-2 py-1 bg-gray-50 text-gray-700 border-gray-200 cursor-pointer"
+                              variant="default"
+                              className="cursor-pointer"
                             >
                               +{user.projects.length - 2}
                             </Badge>
