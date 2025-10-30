@@ -374,11 +374,10 @@ export async function purgeDocuments(
       throw new Error("Authentication required");
     }
 
-    // API requires a {documents_id: uuid[]} body. Endpoint path still
-    // includes a documents_id param; we'll reuse the first id there.
-    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
-      documentsIds[0]
-    )}`;
+    // Use dedicated purge endpoint accepting { documents_id: string[] }
+    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/purge`;
+
+    console.log("🧹 Purge request →", { url, count: documentsIds.length, documentsIds });
 
     const response = await fetch(url, {
       method: "DELETE",
@@ -390,6 +389,8 @@ export async function purgeDocuments(
       body: JSON.stringify({ documents_id: documentsIds }),
       signal: AbortSignal.timeout(30000),
     });
+
+    console.log("🧹 Purge response ←", { status: response.status, ok: response.ok });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
