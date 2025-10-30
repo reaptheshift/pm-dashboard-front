@@ -239,11 +239,6 @@ export function DocumentsContent() {
           ? "Deadline Passed"
           : "Accepting Bids",
       fileType: getFileType(doc.fileType, doc.fileName),
-      category: "Technical doc",
-      tags: [
-        { label: "Materials", color: "blue" as const },
-        { label: "Construction", color: "indigo" as const },
-      ],
       size: formatFileSize(doc.fileSize),
       uploaded: new Date(doc.uploadTimestamp).toLocaleDateString("en-GB"),
       projectName: doc.projectName,

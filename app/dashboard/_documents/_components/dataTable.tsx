@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/table";
 import { FileTypeIcon, FileType } from "./fileTypeIcon";
 import { StatusBadge, StatusType } from "./statusBadge";
-import { TagBadge, TagColor } from "./tagBadge";
 import { ActionButtons } from "./actionButtons";
 import { TablePagination } from "./tablePagination";
 import { InfoPopover } from "./universalPopover";
@@ -23,8 +22,6 @@ export interface TableRowData {
   fileName: string;
   status: string;
   fileType: FileType;
-  category: string;
-  tags: Array<{ label: string; color: TagColor }>;
   size: string;
   uploaded: string;
   parsingStatus: StatusType;
@@ -77,10 +74,7 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
               Project
             </TableHead>
             <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
-              Category
-            </TableHead>
-            <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
-              Tags
+              Type
             </TableHead>
             <TableHead className="px-6 py-3 text-left font-medium text-gray-600 text-xs h-12">
               Size
@@ -171,52 +165,11 @@ export function DataTable({ data, className, onDelete, onFileClick }: DataTableP
                 )}
               </TableCell>
 
-              {/* Category Column */}
+              {/* Type Column */}
               <TableCell className="px-6 py-4 p-4">
                 <span className="text-sm font-medium text-gray-900">
-                  {row.category}
+                  {row.fileType}
                 </span>
-              </TableCell>
-
-              {/* Tags Column */}
-              <TableCell className="px-6 py-4 p-4">
-                <div className="flex items-center gap-1 flex-wrap">
-                  {row.tags.slice(0, 2).map((tag, tagIndex) => (
-                    <TagBadge
-                      key={`${row.id || index}-tag-${tagIndex}-${tag.label}`}
-                      color={tag.color}
-                    >
-                      {tag.label}
-                    </TagBadge>
-                  ))}
-                  {row.tags.length > 2 && (
-                    <InfoPopover
-                      trigger={
-                        <TagBadge
-                          color="gray"
-                          className="cursor-help hover:bg-gray-200 transition-colors"
-                        >
-                          +{row.tags.length - 2}
-                        </TagBadge>
-                      }
-                      title="All Tags"
-                      description={
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {row.tags.map((tag, tagIndex) => (
-                            <TagBadge
-                              key={`${row.id || index}-all-tag-${tagIndex}-${
-                                tag.label
-                              }`}
-                              color={tag.color}
-                            >
-                              {tag.label}
-                            </TagBadge>
-                          ))}
-                        </div>
-                      }
-                    />
-                  )}
-                </div>
               </TableCell>
 
               {/* Size Column */}
