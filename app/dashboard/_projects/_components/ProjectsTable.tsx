@@ -91,25 +91,16 @@ export function ProjectsTable({
   ).length;
   const totalMembers = 0; // API doesn't provide members data
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
+  const getStatusBadgeVariant = (
+    status: string
+  ): "default" | "success" | "warning" | "info" | "danger" => {
+    switch (status.toLowerCase()) {
       case "active":
+        return "success";
+      case "completed":
+        return "info";
+      default:
         return "default";
-      case "completed":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-50 text-green-700 border-green-200";
-      case "completed":
-        return "bg-gray-50 text-gray-700 border-gray-200";
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
     }
   };
 
@@ -595,9 +586,9 @@ export function ProjectsTable({
                     <TableCell className="px-6 py-4">
                       <Badge
                         variant={getStatusBadgeVariant(project.status)}
-                        className={getStatusBadgeColor(project.status)}
+                        className="flex items-center gap-1"
                       >
-                        <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
+                        <div className="w-2 h-2 rounded-full bg-current"></div>
                         {project.status}
                       </Badge>
                     </TableCell>
