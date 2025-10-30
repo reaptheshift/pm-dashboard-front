@@ -56,6 +56,15 @@ export interface CreateFieldWorkerResponse {
   projects: Project[];
 }
 
+// Get auth token for client-side use
+export async function getAuthTokenForClient(): Promise<string | null> {
+	try {
+		return await getAuthToken()
+	} catch (error) {
+		return null
+	}
+}
+
 // Get all users
 export async function getFieldWorkers(): Promise<FieldWorker[]> {
   try {
@@ -167,7 +176,7 @@ export async function updateUser(
     );
 
     const response = await fetch(`${XANO_BASE_URL}/field_workers/${user_id}`, {
-      method: "PATCH",
+      method: "POST",
       headers: {
         Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",

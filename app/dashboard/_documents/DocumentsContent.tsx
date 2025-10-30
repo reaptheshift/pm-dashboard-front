@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export function DocumentsContent() {
   const { hash } = useHash("#Documents");
@@ -308,35 +309,24 @@ export function DocumentsContent() {
         <div className="flex items-center gap-3">
           {/* Purge All Button */}
           <Dialog open={purgeOpen} onOpenChange={setPurgeOpen}>
-            <button
+            <Button
               onClick={() => setPurgeOpen(true)}
               disabled={documents.length === 0 || isPurging}
-              className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: "#dc2626" }}
+              variant="destructive"
+              size="default"
               title={
                 documents.length === 0
                   ? "No documents to purge"
                   : "Purge all documents"
               }
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M19 13a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
               ⚠️ Purge
-            </button>
+            </Button>
             <DialogContent className="sm:max-w-[520px]">
               <DialogHeader>
-                <DialogTitle className="text-red-600">⚠️ Purge all data</DialogTitle>
+                <DialogTitle className="text-red-600">
+                  ⚠️ Purge all data
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3 text-gray-700">
                 <p className="font-medium">
@@ -348,13 +338,15 @@ export function DocumentsContent() {
                 </p>
               </div>
               <div className="flex justify-end gap-2">
-                <button
+                <Button
                   onClick={() => setPurgeOpen(false)}
                   className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  variant="outline"
+                  size="default"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={async () => {
                     if (documents.length === 0 || isPurging) return;
                     const ids = documents.map((d) => d.fileId);
@@ -385,13 +377,13 @@ export function DocumentsContent() {
                   style={{ backgroundColor: "#dc2626" }}
                 >
                   {isPurging ? "Purging..." : "Yes, purge all"}
-                </button>
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
 
           {/* Manual Refresh Button */}
-          <button
+          <Button
             onClick={() => loadDocuments(true)}
             className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
             title="Refresh documents list"
@@ -410,10 +402,10 @@ export function DocumentsContent() {
               />
             </svg>
             Refresh
-          </button>
+          </Button>
 
           <UploadDocumentModalWrapper onUploadComplete={handleUploadComplete}>
-            <button className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors">
+            <Button className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition-colors">
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -428,7 +420,7 @@ export function DocumentsContent() {
                 />
               </svg>
               Upload Documents
-            </button>
+            </Button>
           </UploadDocumentModalWrapper>
         </div>
       </div>

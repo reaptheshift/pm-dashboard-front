@@ -12,12 +12,13 @@ import {
 } from "./_components";
 import { UsersSkeleton } from "./_components/UsersSkeleton";
 import {
-  createFieldWorker,
-  getFieldWorkers,
-  updateUser,
-  deleteUser,
-  type FieldWorker as ApiUser,
-} from "./_actions";
+	createFieldWorker,
+	getFieldWorkers,
+	deleteUser,
+	getAuthTokenForClient,
+	type FieldWorker as ApiUser,
+} from './_actions'
+import { patchUserClient } from './patch-temp'
 
 interface User {
   id: string;
@@ -208,47 +209,58 @@ export function UserContent({
     }
   };
 
-  const handleUpdateUser = async (userId: string, data: any) => {
-    try {
-      // Call the updateUser server action
-      const updatedUser = await updateUser(parseInt(userId), data);
+	const handleUpdateUser = async (userId: string, data: any) => {
+		try {
+			// Get auth token for client-side patch
+			const authToken = await getAuthTokenForClient()
 
-      // Transform the updated user to match our User interface
-      const transformedUser: User = {
-        id: updatedUser.id.toString(),
-        name: updatedUser.name || "Unknown",
-        email: updatedUser.email || "No email",
-        role: updatedUser.role || "field_worker",
-        status: "Active" as const,
-        projects: Array.isArray(
-          updatedUser.project_relations || updatedUser.projects_relations
-        )
-          ? (
-              updatedUser.project_relations ||
-              updatedUser.projects_relations ||
-              []
-            ).map((relation: any) => ({
-              id: relation.project?.id?.toString() || "unknown",
-              name: relation.project?.name || "Unnamed Project",
-              relationId: relation.relation_id,
-            }))
-          : [],
-        lastLogin: updatedUser.last_login
-          ? new Date(updatedUser.last_login).toLocaleString()
-          : "Never",
-        joinedDate: updatedUser.created_at
-          ? new Date(updatedUser.created_at).toLocaleString()
-          : new Date().toLocaleString(),
-      };
+			if (!authToken) {
+				throw new Error('Authentication required')
+			}
 
-      // Update the user in the existing users list
-      setUsers((prevUsers) =>
-        prevUsers.map((user) => (user.id === userId ? transformedUser : user))
-      );
-    } catch (error: any) {
-      throw new Error(error.message || "Failed to update user");
-    }
-  };
+			// Call the client-side patch function
+			const updatedUser = await patchUserClient(
+				parseInt(userId),
+				data,
+				authToken
+			)
+
+			// Transform the updated user to match our User interface
+			const transformedUser: User = {
+				id: updatedUser.id.toString(),
+				name: updatedUser.name || 'Unknown',
+				email: updatedUser.email || 'No email',
+				role: updatedUser.role || 'field_worker',
+				status: 'Active' as const,
+				projects: Array.isArray(
+					updatedUser.project_relations || updatedUser.projects_relations
+				)
+					? (
+							updatedUser.project_relations ||
+							updatedUser.projects_relations ||
+							[]
+						).map((relation: any) => ({
+							id: relation.project?.id?.toString() || 'unknown',
+							name: relation.project?.name || 'Unnamed Project',
+							relationId: relation.relation_id,
+						}))
+					: [],
+				lastLogin: updatedUser.last_login
+					? new Date(updatedUser.last_login).toLocaleString()
+					: 'Never',
+				joinedDate: updatedUser.created_at
+					? new Date(updatedUser.created_at).toLocaleString()
+					: new Date().toLocaleString(),
+			}
+
+			// Update the user in the existing users list
+			setUsers((prevUsers) =>
+				prevUsers.map((user) => (user.id === userId ? transformedUser : user))
+			)
+		} catch (error: any) {
+			throw new Error(error.message || 'Failed to update user')
+		}
+	}
 
   const handleDeleteUser = async (user: User) => {
     setSelectedUser(user);
