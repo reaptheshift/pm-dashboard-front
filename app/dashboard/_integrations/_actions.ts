@@ -2,8 +2,9 @@
 
 import { getAuthToken } from "@/lib/auth-server";
 
-// Procore integration endpoint - update with actual Xano endpoint when available
-const PROCORE_API_URL = "https://xtvj-bihp-mh8d.n7e.xano.io/api:hRRjrmcb/procore";
+// Procore integration endpoint
+const PROCORE_API_URL =
+  "https://xtvj-bihp-mh8d.n7e.xano.io/api:CcHPK_bl/procore";
 
 /**
  * Authorize Procore integration
@@ -49,9 +50,6 @@ export async function authorizeProcore(): Promise<string> {
 
     return authUrl;
   } catch (error: any) {
-    throw new Error(
-      error.message || "Failed to authorize Procore integration"
-    );
+    throw new Error(error.message || "Failed to authorize Procore integration");
   }
 }
-
