@@ -3,73 +3,61 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { authorizeProcore, exchangeProcoreToken } from "./_actions";
+import { authorizeProcore, initiateProcore } from "./_actions";
 import { toast } from "sonner";
 
 export function IntegrationsContent() {
   const [isConnecting, setIsConnecting] = React.useState(false);
+  const [hasProcessedCode, setHasProcessedCode] = React.useState(false);
 
-  // Listen for OAuth callback messages from popup
-  React.useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      // Verify origin for security
-      if (event.origin !== window.location.origin) {
-        return;
-      }
+  const handleOAuthCallback = React.useCallback(async (code: string) => {
+    try {
+      setIsConnecting(true);
 
-      if (event.data.type === "PROCORE_OAUTH_SUCCESS") {
-        const code = event.data.code;
+      // Call initiate endpoint with the authorization code
+      const result = await initiateProcore(code);
 
-        if (!code) {
-          toast.error("Authorization failed", {
-            description: "No authorization code received",
-          });
-          setIsConnecting(false);
-          return;
-        }
+      // TODO: Store the token data (access_token, refresh_token) in your database
+      // You might want to call another API endpoint to save the tokens
+      // Example: await saveProcoreTokens(result.access_token, result.refresh_token);
+      console.log("Procore initiated successfully:", {
+        success: result.success,
+        hasAccessToken: !!result.access_token,
+        hasRefreshToken: !!result.refresh_token,
+      });
 
-        try {
-          // Exchange authorization code for access token
-          const tokenData = await exchangeProcoreToken(code);
+      toast.success("Procore connected successfully!", {
+        description: "Your Procore account has been connected",
+      });
 
-          // TODO: Store the token data (access_token, refresh_token) in your database
-          // You might want to call another API endpoint to save the tokens
-          // Example: await saveProcoreTokens(tokenData.access_token, tokenData.refresh_token);
-          console.log("Token data received:", {
-            hasAccessToken: !!tokenData.access_token,
-            hasRefreshToken: !!tokenData.refresh_token,
-          });
+      // Clean up URL by removing the code parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      window.history.replaceState({}, "", url.toString());
 
-          toast.success("Procore connected successfully!", {
-            description: "Your Procore account has been connected",
-          });
-
-          setIsConnecting(false);
-        } catch (error: any) {
-          toast.error("Failed to complete connection", {
-            description:
-              error.message ||
-              "Failed to exchange authorization code for token",
-          });
-          setIsConnecting(false);
-        }
-      } else if (event.data.type === "PROCORE_OAUTH_ERROR") {
-        toast.error("Authorization failed", {
-          description:
-            event.data.error_description ||
-            event.data.error ||
-            "Failed to authorize with Procore",
-        });
-        setIsConnecting(false);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
+      setIsConnecting(false);
+    } catch (error: any) {
+      toast.error("Failed to complete connection", {
+        description:
+          error.message || "Failed to initiate Procore integration",
+      });
+      setIsConnecting(false);
+    }
   }, []);
+
+  // Check for OAuth callback code in URL when component mounts
+  React.useEffect(() => {
+    // Only process once
+    if (hasProcessedCode) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+
+    if (code) {
+      setHasProcessedCode(true);
+      handleOAuthCallback(code);
+    }
+  }, [hasProcessedCode, handleOAuthCallback]);
 
   const handleConnectProcore = async () => {
     try {
