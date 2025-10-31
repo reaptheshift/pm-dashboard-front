@@ -1,16 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { initiateProcore } from "./_actions";
+import { initiateProcore, getProcoreTokenInfo } from "./_actions";
 import { toast } from "sonner";
 
 /**
  * Custom hook to handle Procore OAuth callback
  * Detects authorization code in URL and initiates the OAuth flow
+ * Also checks connection status on mount
  */
 export function useProcoreOAuth() {
   const hasInitiatedRef = useRef(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Check connection status on mount
+  useEffect(() => {
+    async function checkConnection() {
+      try {
+        const tokenInfo = await getProcoreTokenInfo();
+        setIsConnected(tokenInfo.connected);
+      } catch (error) {
+        setIsConnected(false);
+      }
+    }
+
+    checkConnection();
+  }, []);
 
   const handleOAuthCallback = useCallback(async (code: string) => {
     // Prevent duplicate calls
@@ -26,18 +42,36 @@ export function useProcoreOAuth() {
       // Call initiate endpoint with the authorization code
       const result = await initiateProcore(code);
 
-      // TODO: Store the token data (access_token, refresh_token) in your database
-      // You might want to call another API endpoint to save the tokens
-      // Example: await saveProcoreTokens(result.access_token, result.refresh_token);
-      console.log("Procore initiated successfully:", {
+      console.log("✅ Procore initiate result:", {
         success: result.success,
         hasAccessToken: !!result.access_token,
         hasRefreshToken: !!result.refresh_token,
       });
 
-      toast.success("Procore connected successfully!", {
-        description: "Your Procore account has been connected",
+      // Wait a moment for cookies to be set before verification
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Verify connection by calling token/info endpoint
+      const tokenInfo = await getProcoreTokenInfo();
+
+      console.log("🔍 Token info verification:", {
+        connected: tokenInfo.connected,
+        tokenInfoKeys: Object.keys(tokenInfo),
       });
+
+      if (tokenInfo.connected) {
+        setIsConnected(true);
+        toast.success("Procore connected successfully!", {
+          description: "Your Procore account has been connected",
+        });
+      } else {
+        // Show more detailed error message
+        const errorDetails = tokenInfo.error || tokenInfo.message || "Unknown error";
+        console.error("⚠️ Verification failed details:", tokenInfo);
+        toast.warning("Connection initiated but verification failed", {
+          description: errorDetails || "Please refresh the page to check connection status",
+        });
+      }
 
       // Clean up URL by removing the code parameter
       const url = new URL(window.location.href);
@@ -68,6 +102,6 @@ export function useProcoreOAuth() {
     }
   }, [handleOAuthCallback]);
 
-  return { isConnecting };
+  return { isConnecting, isConnected, setIsConnected };
 }
 

@@ -84,6 +84,115 @@ export async function getProcoreAuthToken(): Promise<string | null> {
 }
 
 /**
+ * Get Procore token info to verify connection status
+ * Uses the Procore auth token (from cookies) to check if integration is active
+ */
+export async function getProcoreTokenInfo(): Promise<{
+  connected: boolean;
+  [key: string]: any;
+}> {
+  try {
+    const procoreToken = await getProcoreAuthToken();
+
+    if (!procoreToken) {
+      console.log("🔍 getProcoreTokenInfo: No Procore token in cookies");
+      return { connected: false };
+    }
+
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
+    // Build URL with token as query parameter
+    const url = new URL(`${PROCORE_API_URL}/token/info`);
+    url.searchParams.set("token", procoreToken);
+
+    console.log("🔍 Calling token/info endpoint:", {
+      url: url.toString(),
+      hasProcoreToken: !!procoreToken,
+      procoreTokenLength: procoreToken?.length || 0,
+    });
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      cache: "no-cache",
+    });
+
+    console.log("🔍 token/info response:", {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+    });
+
+    if (!response.ok) {
+      let errorText = "";
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        // Ignore text parsing errors
+      }
+
+      // Try to parse as JSON if possible
+      let errorJson = null;
+      try {
+        errorJson = JSON.parse(errorText);
+      } catch (e) {
+        // Not JSON, use as plain text
+      }
+
+      console.error("❌ token/info error:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorText,
+        errorJson,
+      });
+
+      // If 401 or 403, token is invalid
+      if (response.status === 401 || response.status === 403) {
+        return {
+          connected: false,
+          error: errorJson?.message || errorText || "Unauthorized",
+          status: response.status,
+        };
+      }
+
+      // For other errors, return false but include error info
+      return {
+        connected: false,
+        error: errorJson?.message || errorText || `HTTP ${response.status}`,
+        status: response.status,
+      };
+    }
+
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log("🔍 token/info raw response:", responseText);
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (e) {
+      console.error("❌ Failed to parse token/info response:", e);
+      return { connected: false, error: "Invalid response format" };
+    }
+
+    console.log("✅ token/info success:", data);
+
+    // Consider connected if we get any valid response (even empty object)
+    // The API might return different structures
+    return { connected: true, ...data };
+  } catch (error: any) {
+    console.error("❌ getProcoreTokenInfo error:", error.message);
+    // On error, assume not connected
+    return { connected: false };
+  }
+}
+
+/**
  * Set Procore refresh token in cookies
  */
 async function setProcoreRefreshToken(token: string): Promise<void> {

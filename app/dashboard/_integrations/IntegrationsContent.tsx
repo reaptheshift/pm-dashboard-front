@@ -9,9 +9,9 @@ import { toast } from "sonner";
 
 export function IntegrationsContent() {
   const [isConnecting, setIsConnecting] = React.useState(false);
-  
+
   // Handle OAuth callback - automatically detects code in URL and initiates
-  const { isConnecting: isOAuthConnecting } = useProcoreOAuth();
+  const { isConnecting: isOAuthConnecting, isConnected } = useProcoreOAuth();
 
   const handleConnectProcore = async () => {
     try {
@@ -87,7 +87,16 @@ export function IntegrationsContent() {
                 />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">Procore</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Procore
+                  </h3>
+                  {isConnected && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Connected
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600 mt-1">
                   Construction project management
                 </p>
@@ -108,15 +117,36 @@ export function IntegrationsContent() {
                   <li>• Financial information</li>
                 </ul>
               </div>
-              <Button
-                onClick={handleConnectProcore}
-                disabled={isConnecting || isOAuthConnecting}
-                className="w-full bg-gray-900 text-white hover:bg-gray-800"
-              >
-                {isConnecting || isOAuthConnecting
-                  ? "Connecting..."
-                  : "Connect to Procore"}
-              </Button>
+              {isConnected ? (
+                <div className="w-full bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-green-700">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="font-medium">Connected to Procore</span>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleConnectProcore}
+                  disabled={isConnecting || isOAuthConnecting}
+                  className="w-full bg-gray-900 text-white hover:bg-gray-800"
+                >
+                  {isConnecting || isOAuthConnecting
+                    ? "Connecting..."
+                    : "Connect to Procore"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
