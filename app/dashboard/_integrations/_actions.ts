@@ -1,0 +1,57 @@
+"use server";
+
+import { getAuthToken } from "@/lib/auth-server";
+
+// Procore integration endpoint - update with actual Xano endpoint when available
+const PROCORE_API_URL = "https://xtvj-bihp-mh8d.n7e.xano.io/api:hRRjrmcb/procore";
+
+/**
+ * Authorize Procore integration
+ * Initiates OAuth flow and returns authorization URL
+ */
+export async function authorizeProcore(): Promise<string> {
+  try {
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
+    const response = await fetch(`${PROCORE_API_URL}/authorize`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      cache: "no-cache",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Failed to get Procore authorization URL: ${response.status}${
+          errorText ? ` - ${errorText}` : ""
+        }`
+      );
+    }
+
+    const data = await response.json();
+
+    // Handle different response formats
+    const authUrl =
+      typeof data === "string"
+        ? data
+        : data?.authUrl || data?.url || data?.authorization_url || "";
+
+    if (!authUrl) {
+      throw new Error("No authorization URL returned from server");
+    }
+
+    return authUrl;
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to authorize Procore integration"
+    );
+  }
+}
+

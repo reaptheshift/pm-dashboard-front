@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { authorizeProcore } from "@/app/dashboard/_integrations/procore/_actions";
+import { authorizeProcore } from "./_actions";
 import { toast } from "sonner";
 
 export function IntegrationsContent() {
@@ -14,18 +14,7 @@ export function IntegrationsContent() {
       setIsConnecting(true);
 
       // Authorize Procore connection
-      const response = await authorizeProcore();
-
-      // Handle different response formats
-      let authUrl: string;
-
-      if (typeof response === "string") {
-        authUrl = response;
-      } else if (response && typeof response === "object") {
-        authUrl = response.authUrl || response.url || "";
-      } else {
-        throw new Error("Invalid response format from server");
-      }
+      const authUrl = await authorizeProcore();
 
       if (!authUrl) {
         throw new Error("No authorization URL returned");
