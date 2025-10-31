@@ -8,9 +8,16 @@ import { toast } from "sonner";
 
 export function IntegrationsContent() {
   const [isConnecting, setIsConnecting] = React.useState(false);
-  const [hasProcessedCode, setHasProcessedCode] = React.useState(false);
+  const hasInitiatedRef = React.useRef(false);
 
   const handleOAuthCallback = React.useCallback(async (code: string) => {
+    // Prevent duplicate calls
+    if (hasInitiatedRef.current) {
+      return;
+    }
+
+    hasInitiatedRef.current = true;
+
     try {
       setIsConnecting(true);
 
@@ -38,26 +45,27 @@ export function IntegrationsContent() {
       setIsConnecting(false);
     } catch (error: any) {
       toast.error("Failed to complete connection", {
-        description:
-          error.message || "Failed to initiate Procore integration",
+        description: error.message || "Failed to initiate Procore integration",
       });
       setIsConnecting(false);
+      // Reset ref on error so user can retry
+      hasInitiatedRef.current = false;
     }
   }, []);
 
-  // Check for OAuth callback code in URL when component mounts
+  // Check for OAuth callback code in URL when component mounts - only once
   React.useEffect(() => {
-    // Only process once
-    if (hasProcessedCode) return;
+    // Skip if already initiated
+    if (hasInitiatedRef.current) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
 
     if (code) {
-      setHasProcessedCode(true);
       handleOAuthCallback(code);
     }
-  }, [hasProcessedCode, handleOAuthCallback]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConnectProcore = async () => {
     try {
