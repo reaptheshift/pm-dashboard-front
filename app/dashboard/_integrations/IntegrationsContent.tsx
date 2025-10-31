@@ -3,69 +3,15 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { authorizeProcore, initiateProcore } from "./_actions";
+import { authorizeProcore } from "./_actions";
+import { useProcoreOAuth } from "./useProcoreOAuth";
 import { toast } from "sonner";
 
 export function IntegrationsContent() {
   const [isConnecting, setIsConnecting] = React.useState(false);
-  const hasInitiatedRef = React.useRef(false);
-
-  const handleOAuthCallback = React.useCallback(async (code: string) => {
-    // Prevent duplicate calls
-    if (hasInitiatedRef.current) {
-      return;
-    }
-
-    hasInitiatedRef.current = true;
-
-    try {
-      setIsConnecting(true);
-
-      // Call initiate endpoint with the authorization code
-      const result = await initiateProcore(code);
-
-      // TODO: Store the token data (access_token, refresh_token) in your database
-      // You might want to call another API endpoint to save the tokens
-      // Example: await saveProcoreTokens(result.access_token, result.refresh_token);
-      console.log("Procore initiated successfully:", {
-        success: result.success,
-        hasAccessToken: !!result.access_token,
-        hasRefreshToken: !!result.refresh_token,
-      });
-
-      toast.success("Procore connected successfully!", {
-        description: "Your Procore account has been connected",
-      });
-
-      // Clean up URL by removing the code parameter
-      const url = new URL(window.location.href);
-      url.searchParams.delete("code");
-      window.history.replaceState({}, "", url.toString());
-
-      setIsConnecting(false);
-    } catch (error: any) {
-      toast.error("Failed to complete connection", {
-        description: error.message || "Failed to initiate Procore integration",
-      });
-      setIsConnecting(false);
-      // Reset ref on error so user can retry
-      hasInitiatedRef.current = false;
-    }
-  }, []);
-
-  // Check for OAuth callback code in URL when component mounts - only once
-  React.useEffect(() => {
-    // Skip if already initiated
-    if (hasInitiatedRef.current) return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
-
-    if (code) {
-      handleOAuthCallback(code);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  
+  // Handle OAuth callback - automatically detects code in URL and initiates
+  const { isConnecting: isOAuthConnecting } = useProcoreOAuth();
 
   const handleConnectProcore = async () => {
     try {
@@ -164,10 +110,12 @@ export function IntegrationsContent() {
               </div>
               <Button
                 onClick={handleConnectProcore}
-                disabled={isConnecting}
+                disabled={isConnecting || isOAuthConnecting}
                 className="w-full bg-gray-900 text-white hover:bg-gray-800"
               >
-                {isConnecting ? "Connecting..." : "Connect to Procore"}
+                {isConnecting || isOAuthConnecting
+                  ? "Connecting..."
+                  : "Connect to Procore"}
               </Button>
             </div>
           </div>
