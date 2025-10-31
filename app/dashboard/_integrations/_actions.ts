@@ -53,3 +53,47 @@ export async function authorizeProcore(): Promise<string> {
     throw new Error(error.message || "Failed to authorize Procore integration");
   }
 }
+
+/**
+ * Exchange authorization code for access token
+ * Called after user authorizes the app in Procore
+ */
+export async function exchangeProcoreToken(code: string): Promise<{
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+}> {
+  try {
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      throw new Error("Authentication required");
+    }
+
+    const response = await fetch(`${PROCORE_API_URL}/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ code }),
+      cache: "no-cache",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `Failed to exchange token: ${response.status}${
+          errorText ? ` - ${errorText}` : ""
+        }`
+      );
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to exchange Procore authorization code"
+    );
+  }
+}

@@ -3,11 +3,73 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { authorizeProcore } from "./_actions";
+import { authorizeProcore, exchangeProcoreToken } from "./_actions";
 import { toast } from "sonner";
 
 export function IntegrationsContent() {
   const [isConnecting, setIsConnecting] = React.useState(false);
+
+  // Listen for OAuth callback messages from popup
+  React.useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data.type === "PROCORE_OAUTH_SUCCESS") {
+        const code = event.data.code;
+
+        if (!code) {
+          toast.error("Authorization failed", {
+            description: "No authorization code received",
+          });
+          setIsConnecting(false);
+          return;
+        }
+
+        try {
+          // Exchange authorization code for access token
+          const tokenData = await exchangeProcoreToken(code);
+
+          // TODO: Store the token data (access_token, refresh_token) in your database
+          // You might want to call another API endpoint to save the tokens
+          // Example: await saveProcoreTokens(tokenData.access_token, tokenData.refresh_token);
+          console.log("Token data received:", {
+            hasAccessToken: !!tokenData.access_token,
+            hasRefreshToken: !!tokenData.refresh_token,
+          });
+
+          toast.success("Procore connected successfully!", {
+            description: "Your Procore account has been connected",
+          });
+
+          setIsConnecting(false);
+        } catch (error: any) {
+          toast.error("Failed to complete connection", {
+            description:
+              error.message ||
+              "Failed to exchange authorization code for token",
+          });
+          setIsConnecting(false);
+        }
+      } else if (event.data.type === "PROCORE_OAUTH_ERROR") {
+        toast.error("Authorization failed", {
+          description:
+            event.data.error_description ||
+            event.data.error ||
+            "Failed to authorize with Procore",
+        });
+        setIsConnecting(false);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, []);
 
   const handleConnectProcore = async () => {
     try {
@@ -35,14 +97,15 @@ export function IntegrationsContent() {
         return;
       }
 
-      // Listen for popup to close or send message
+      // Monitor popup closure (in case user closes without completing)
+      // The message handler will handle success/error states
+      // If user closes popup manually, we'll reset state after a delay
       const checkPopup = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkPopup);
-          setIsConnecting(false);
-          toast.success("Connection successful!", {
-            description: "Your Procore account has been connected",
-          });
+          setTimeout(() => {
+            setIsConnecting(false);
+          }, 500);
         }
       }, 1000);
     } catch (error: any) {
