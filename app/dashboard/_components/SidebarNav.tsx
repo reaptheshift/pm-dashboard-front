@@ -3,25 +3,19 @@
 import * as React from "react";
 import { useHash } from "@/hooks/useHash";
 import {
-  LayoutDashboard,
   FolderKanban,
   Users,
   FileText,
   Plug,
   MessageSquare,
-  Activity,
-  Settings,
 } from "lucide-react";
 
 const LINKS = [
-  { label: "Dashboard", hash: "#Dashboard", Icon: LayoutDashboard },
   { label: "Projects", hash: "#Projects", Icon: FolderKanban },
   { label: "Users", hash: "#Users", Icon: Users },
   { label: "Documents", hash: "#Documents", Icon: FileText },
   { label: "Integrations", hash: "#Integrations", Icon: Plug },
-  { label: "AI assistant", hash: "#AI", Icon: MessageSquare },
-  { label: "System Logs", hash: "#SystemLogs", Icon: Activity },
-  { label: "Settings", hash: "#Settings", Icon: Settings },
+  { label: "Assistant", hash: "#AI", Icon: MessageSquare },
 ] as const;
 
 export function SidebarNav() {

@@ -6,6 +6,7 @@ import { DocumentsContent } from "../_documents/DocumentsContent";
 import { ProjectsContent } from "../_projects/ProjectsContent";
 import { UserContent } from "../_users/UserContent";
 import { IntegrationsContent } from "../_integrations/IntegrationsContent";
+import { AssistantContent } from "../_assistant/AssistantContent";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -52,36 +53,32 @@ export function TabRouter() {
   return (
     <>
       {/* Render all tabs but only show the active one */}
-      <div className={activeTab === "documents" ? "block" : "hidden"}>
+      <div
+        className={`${activeTab === "documents" ? "block" : "hidden"} h-full`}
+      >
         <DocumentsContent />
       </div>
 
-      <div className={activeTab === "projects" ? "block" : "hidden"}>
+      <div
+        className={`${activeTab === "projects" ? "block" : "hidden"} h-full`}
+      >
         <ProjectsContent />
       </div>
 
-      <div className={activeTab === "users" ? "block" : "hidden"}>
+      <div className={`${activeTab === "users" ? "block" : "hidden"} h-full`}>
         <UserContent />
       </div>
 
-      <div className={activeTab === "integrations" ? "block" : "hidden"}>
+      <div
+        className={`${
+          activeTab === "integrations" ? "block" : "hidden"
+        } h-full`}
+      >
         <IntegrationsContent />
       </div>
 
-      <div className={activeTab === "ai" ? "block" : "hidden"}>
-        <Placeholder title="AI assistant" />
-      </div>
-
-      <div className={activeTab === "logs" ? "block" : "hidden"}>
-        <Placeholder title="System Logs" />
-      </div>
-
-      <div className={activeTab === "settings" ? "block" : "hidden"}>
-        <Placeholder title="Settings" />
-      </div>
-
-      <div className={activeTab === "dashboard" ? "block" : "hidden"}>
-        <Placeholder title="Dashboard" />
+      <div className={`${activeTab === "ai" ? "block" : "hidden"} h-full`}>
+        <AssistantContent />
       </div>
     </>
   );
