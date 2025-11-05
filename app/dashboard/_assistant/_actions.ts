@@ -8,6 +8,8 @@ const CONVERSATIONS_API_URL =
   "https://xtvj-bihp-mh8d.n7e.xano.io/api:vJCScL_s/conversation";
 const START_CONVERSATION_API_URL =
   "https://xtvj-bihp-mh8d.n7e.xano.io/api:vJCScL_s/conversation/start";
+const CONTINUE_CONVERSATION_API_URL =
+  "https://xtvj-bihp-mh8d.n7e.xano.io/api:vJCScL_s/conversation/continue";
 
 export interface Conversation {
   id: string;
@@ -19,14 +21,29 @@ export interface Conversation {
   messageCount?: number;
 }
 
+export interface ReferencedDocument {
+  documents: {
+    id: string;
+    name: string;
+    path: string;
+    size: number;
+    type: string;
+    content_type: string;
+    processing_status: string;
+    created_at: number;
+    project_id?: number;
+    [key: string]: any;
+  };
+}
+
 export interface ConversationMessage {
   id: string;
   conversation_id: string;
-  refrenced_documents: string[];
+  refrenced_documents?: ReferencedDocument[];
   role: "user" | "assistant";
   index: number;
   content: string;
-  created_at: string;
+  created_at: string | number;
 }
 
 export interface ConversationWithMessages extends Conversation {
@@ -42,6 +59,33 @@ export interface StartConversationParams {
   question: string;
   project_id: string;
   documents_id: string[];
+}
+
+export interface ContinueConversationParams {
+  conversations_id: string;
+  question: string;
+  documents_id?: string[];
+}
+
+export interface SourceDocument {
+  pages: number[];
+  document_id: string;
+  document_name: string;
+}
+
+export interface LLMAnswer {
+  sources?: SourceDocument[];
+  answer_markdown: string;
+  id?: string;
+  role?: "user" | "assistant";
+  index?: number;
+  content?: string;
+  created_at?: string | number;
+  refrenced_documents?: ReferencedDocument[];
+}
+
+export interface ContinueConversationResponse {
+  llm_answer: LLMAnswer;
 }
 
 export async function sendMessage(
@@ -116,7 +160,9 @@ export async function sendMessage(
   }
 }
 
-export async function getConversations(): Promise<Conversation[]> {
+export async function getConversations(
+  projectId?: number | string
+): Promise<Conversation[]> {
   const authToken = await getAuthToken();
 
   if (!authToken) {
@@ -124,7 +170,14 @@ export async function getConversations(): Promise<Conversation[]> {
   }
 
   try {
-    const response = await fetch(`${CONVERSATIONS_API_URL}`, {
+    // Optionally filter by project_id when provided
+    const url = projectId
+      ? `${CONVERSATIONS_API_URL}?project_id=${encodeURIComponent(
+          String(projectId)
+        )}`
+      : `${CONVERSATIONS_API_URL}`
+
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -311,5 +364,60 @@ export async function startConversation(
   } catch (error: any) {
     console.error("Error starting conversation:", error);
     throw new Error(error.message || "Failed to start conversation");
+  }
+}
+
+export async function continueConversation(
+  params: ContinueConversationParams
+): Promise<ContinueConversationResponse> {
+  const authToken = await getAuthToken();
+
+  if (!authToken) {
+    throw new Error("Authentication required");
+  }
+
+  try {
+    const body: {
+      conversations_id: string;
+      question: string;
+      documents_id?: string[];
+    } = {
+      conversations_id: params.conversations_id,
+      question: params.question,
+    };
+
+    // Only include documents_id if provided and not empty
+    if (params.documents_id && params.documents_id.length > 0) {
+      body.documents_id = params.documents_id;
+    }
+
+    const response = await fetch(CONTINUE_CONVERSATION_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(body),
+      cache: "no-cache",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Continue conversation API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+
+      throw new Error(
+        `Failed to continue conversation: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("Error continuing conversation:", error);
+    throw new Error(error.message || "Failed to continue conversation");
   }
 }

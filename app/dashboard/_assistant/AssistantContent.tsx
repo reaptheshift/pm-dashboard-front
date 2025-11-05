@@ -12,15 +12,19 @@ import {
 } from "@/components/ui/select";
 import { Send, Loader2, Bot, User, Paperclip, X, Check } from "lucide-react";
 import {
-  sendMessage,
   getConversations,
   getConversation,
   startConversation,
+  continueConversation,
   type Conversation,
 } from "./_actions";
 import { ConversationsSidebar } from "./_components/ConversationsSidebar";
 import { getProjects, type Project } from "../_projects/_actions";
-import { getDocuments, type Document } from "../_documents/_actions";
+import {
+  getDocuments,
+  getDocumentById,
+  type Document,
+} from "../_documents/_actions";
 import { FileTypeIcon } from "../_documents/_components/fileTypeIcon";
 import {
   Popover,
@@ -29,12 +33,20 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 
+interface ReferencedDocumentInfo {
+  id: string;
+  name: string;
+  type: string;
+  path?: string;
+  size?: number;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  referencedDocuments?: string[]; // Document IDs referenced in this message
+  referencedDocuments?: ReferencedDocumentInfo[]; // Full document info referenced in this message
 }
 
 export function AssistantContent() {
@@ -75,12 +87,14 @@ export function AssistantContent() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Load conversations on mount
+  // Load conversations whenever selected project changes
   React.useEffect(() => {
     const loadConversations = async () => {
       try {
         setIsLoadingConversations(true);
-        const data = await getConversations();
+        const data = await getConversations(
+          selectedProjectId ? Number(selectedProjectId) : undefined
+        );
         setConversations(data);
       } catch (error: any) {
         console.error("Failed to load conversations:", error);
@@ -91,7 +105,7 @@ export function AssistantContent() {
     };
 
     loadConversations();
-  }, []);
+  }, [selectedProjectId]);
 
   // Load projects on mount
   React.useEffect(() => {
@@ -211,12 +225,32 @@ export function AssistantContent() {
 
         if (conversation && conversation.messages) {
           const formattedMessages: Message[] = conversation.messages.map(
-            (msg) => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: new Date(msg.created_at),
-            })
+            (msg) => {
+              // Extract referenced documents from API response
+              const referencedDocs: ReferencedDocumentInfo[] | undefined =
+                msg.refrenced_documents?.map((refDoc) => ({
+                  id: refDoc.documents.id,
+                  name: refDoc.documents.name,
+                  type: refDoc.documents.type || "doc",
+                  path: refDoc.documents.path,
+                  size: refDoc.documents.size,
+                }));
+
+              return {
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: new Date(
+                  typeof msg.created_at === "number"
+                    ? msg.created_at
+                    : msg.created_at
+                ),
+                referencedDocuments:
+                  referencedDocs && referencedDocs.length > 0
+                    ? referencedDocs
+                    : undefined,
+              };
+            }
           );
           setMessages(formattedMessages);
           setCurrentConversationId(conversationId);
@@ -251,8 +285,15 @@ export function AssistantContent() {
       return;
     }
 
-    // Store selected documents before clearing
-    const documentsToReference = [...selectedDocuments];
+    // Store selected documents before clearing - convert IDs to full document info
+    const documentsToReference: ReferencedDocumentInfo[] = documents
+      .filter((doc) => selectedDocuments.includes(doc.fileId))
+      .map((doc) => ({
+        id: doc.fileId,
+        name: doc.fileName,
+        type: doc.fileType.toLowerCase(),
+        size: doc.fileSize,
+      }));
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -282,7 +323,7 @@ export function AssistantContent() {
         const startResponse = await startConversation({
           question: trimmedInput,
           project_id: projectId,
-          documents_id: documentsToReference,
+          documents_id: documentsToReference.map((doc) => doc.id),
         });
 
         // Set the actual conversation ID
@@ -291,40 +332,86 @@ export function AssistantContent() {
         setCreatingConversationId(null);
 
         // Add the assistant's response
+        const assistantReferencedDocs: ReferencedDocumentInfo[] | undefined =
+          startResponse.llm_answer.refrenced_documents?.map((refDoc) => ({
+            id: refDoc.documents.id,
+            name: refDoc.documents.name,
+            type: refDoc.documents.type || "doc",
+            path: refDoc.documents.path,
+            size: refDoc.documents.size,
+          }));
+
         const assistantMessage: Message = {
           id: startResponse.llm_answer.id,
           role: "assistant",
           content: startResponse.llm_answer.content,
-          timestamp: new Date(startResponse.llm_answer.created_at),
+          timestamp: new Date(
+            typeof startResponse.llm_answer.created_at === "number"
+              ? startResponse.llm_answer.created_at
+              : startResponse.llm_answer.created_at
+          ),
+          referencedDocuments:
+            assistantReferencedDocs && assistantReferencedDocs.length > 0
+              ? assistantReferencedDocs
+              : undefined,
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Refresh conversations list to include the new conversation
         try {
-          const updatedConversations = await getConversations();
+          const updatedConversations = await getConversations(
+            selectedProjectId ? Number(selectedProjectId) : undefined
+          );
           setConversations(updatedConversations);
         } catch {
           // Silently fail - conversations refresh is not critical
         }
       } else {
-        // For existing conversations, use sendMessage
-        const projectIdNum = parseInt(projectId, 10);
-        const response = await sendMessage(trimmedInput, projectIdNum);
+        // For existing conversations, use continueConversation
+        const continueResponse = await continueConversation({
+          conversations_id: currentConversationId,
+          question: trimmedInput,
+          documents_id:
+            documentsToReference.length > 0
+              ? documentsToReference.map((doc) => doc.id)
+              : undefined,
+        });
 
+        // Extract referenced documents from sources (new format)
+        const assistantReferencedDocs: ReferencedDocumentInfo[] | undefined =
+          continueResponse.llm_answer.sources?.map((source) => ({
+            id: source.document_id,
+            name: source.document_name,
+            type: "doc", // Default type, could be enhanced if API provides it
+          }));
+
+        // Use answer_markdown as the content (new format)
         const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: continueResponse.llm_answer.id || Date.now().toString(),
           role: "assistant",
           content:
-            response.message || "I'm sorry, I couldn't generate a response.",
-          timestamp: new Date(),
+            continueResponse.llm_answer.answer_markdown ||
+            continueResponse.llm_answer.content ||
+            "",
+          timestamp: new Date(
+            typeof continueResponse.llm_answer.created_at === "number"
+              ? continueResponse.llm_answer.created_at
+              : continueResponse.llm_answer.created_at || Date.now()
+          ),
+          referencedDocuments:
+            assistantReferencedDocs && assistantReferencedDocs.length > 0
+              ? assistantReferencedDocs
+              : undefined,
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
 
         // Refresh conversations list after sending a message
         try {
-          const updatedConversations = await getConversations();
+          const updatedConversations = await getConversations(
+            selectedProjectId ? Number(selectedProjectId) : undefined
+          );
           setConversations(updatedConversations);
         } catch {
           // Silently fail - conversations refresh is not critical
@@ -460,13 +547,8 @@ export function AssistantContent() {
               </div>
             ) : (
               messages.map((message) => {
-                const referencedDocs =
-                  message.referencedDocuments &&
-                  message.referencedDocuments.length > 0
-                    ? documents.filter((doc) =>
-                        message.referencedDocuments?.includes(doc.fileId)
-                      )
-                    : [];
+                // Use referenced documents from message (already extracted from API)
+                const referencedDocs = message.referencedDocuments || [];
 
                 return (
                   <div
@@ -494,18 +576,98 @@ export function AssistantContent() {
                           </p>
                           <div className="flex flex-wrap gap-1">
                             {referencedDocs.map((doc) => (
-                              <div
-                                key={doc.fileId}
-                                className="flex items-center gap-1 bg-gray-200 rounded px-2 py-0.5"
+                              <button
+                                key={doc.id}
+                                onClick={async () => {
+                                  const toastId = toast.loading(
+                                    "Loading document...",
+                                    {
+                                      description: doc.name,
+                                      duration: Infinity,
+                                    }
+                                  );
+
+                                  try {
+                                    const result = await getDocumentById(
+                                      doc.id
+                                    );
+
+                                    // Extract file name
+                                    const fileName =
+                                      result?.file_metadata?.file_name ||
+                                      result?.file?.name ||
+                                      result?.name ||
+                                      doc.name;
+
+                                    // Extract download URL
+                                    const downloadUrl =
+                                      result?.file?.url ||
+                                      result?.file_metadata?.download_url ||
+                                      result?.file_metadata?.s3_url ||
+                                      result?.file_metadata?.presigned_url ||
+                                      result?.download_url ||
+                                      result?.s3_url ||
+                                      result?.presigned_url;
+
+                                    if (downloadUrl) {
+                                      // Check expiration if available
+                                      const expiresAt =
+                                        result?.file?.expires_at;
+                                      if (expiresAt) {
+                                        const expirationTime = parseInt(
+                                          String(expiresAt)
+                                        );
+                                        const currentTime = Date.now();
+                                        if (currentTime >= expirationTime) {
+                                          toast.error("Download link expired", {
+                                            id: toastId,
+                                            description:
+                                              "The download link has expired. Please try again.",
+                                            duration: 4000,
+                                          });
+                                          return;
+                                        }
+                                      }
+
+                                      // Open in new window
+                                      window.open(downloadUrl, "_blank");
+                                      toast.success("Document opened", {
+                                        id: toastId,
+                                        description: fileName,
+                                        duration: 2000,
+                                      });
+                                    } else {
+                                      toast.error("No file URL found", {
+                                        id: toastId,
+                                        description:
+                                          "Unable to retrieve document URL",
+                                        duration: 4000,
+                                      });
+                                    }
+                                  } catch (error: any) {
+                                    toast.error("Failed to load document", {
+                                      id: toastId,
+                                      description:
+                                        error?.message ||
+                                        "An error occurred while loading the document",
+                                      duration: 4000,
+                                    });
+                                  }
+                                }}
+                                className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 rounded px-2 py-0.5 cursor-pointer transition-colors"
+                                title={`Click to view ${doc.name}`}
                               >
                                 <FileTypeIcon
-                                  type={getFileType(doc.fileType, doc.fileName)}
+                                  type={getFileType(
+                                    doc.type.toUpperCase(),
+                                    doc.name
+                                  )}
                                   className="w-3 h-3"
                                 />
                                 <span className="text-xs text-gray-700 truncate max-w-[120px]">
-                                  {doc.fileName}
+                                  {doc.name}
                                 </span>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
