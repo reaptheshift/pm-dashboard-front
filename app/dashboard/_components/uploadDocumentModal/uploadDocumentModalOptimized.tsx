@@ -167,15 +167,29 @@ export function UploadDocumentModalOptimized({
       const CONCURRENT_LIMIT = 30;
 
       // Create a queue of files to upload with their indices
+      // Don't mutate the queue - use an index to track position
       const queue = [
         ...initialUploadItems.map((item, index) => ({ item, index })),
       ];
       let queueIndex = 0;
       let activeWorkers = 0;
+      let completedCount = 0;
+      const totalFiles = queue.length;
       let resolveAll: (() => void) | null = null;
       const allCompletePromise = new Promise<void>((resolve) => {
         resolveAll = resolve;
       });
+
+      // Function to check if all uploads are complete and resolve if so
+      const checkCompletion = () => {
+        if (
+          completedCount === totalFiles &&
+          activeWorkers === 0 &&
+          resolveAll
+        ) {
+          resolveAll();
+        }
+      };
 
       // Function to process a single upload and start next worker if available
       const processUpload = async (queueItem: {
@@ -223,7 +237,10 @@ export function UploadDocumentModalOptimized({
 
           uploadedFiles.push(uploadInfo);
         } catch (uploadError) {
-          console.error("Upload error:", uploadError);
+          console.error(
+            `Upload error for file ${item.file.name}:`,
+            uploadError
+          );
           setUploadingFiles((prev) => {
             const updated = [...prev];
             updated[index] = {
@@ -233,34 +250,39 @@ export function UploadDocumentModalOptimized({
             return updated;
           });
         } finally {
+          completedCount++;
           activeWorkers--;
 
           // If there are more files in the queue, start the next one
+          // Use queueIndex to track position in the original queue array
           if (queueIndex < queue.length) {
-            const nextItem = queue[queueIndex++];
+            const nextItem = queue[queueIndex];
+            queueIndex++; // Increment before starting to avoid race condition
             if (nextItem) {
               activeWorkers++;
-              processUpload(nextItem).catch(() => {
-                // Error already handled in processUpload
+              processUpload(nextItem).catch((err) => {
+                // Error already handled in processUpload, but log for debugging
+                console.error("Worker processUpload error:", err);
               });
             }
           }
 
-          // If queue is empty and no active workers, we're done
-          if (queueIndex >= queue.length && activeWorkers === 0 && resolveAll) {
-            resolveAll();
-          }
+          // Check if all uploads are complete
+          checkCompletion();
         }
       };
 
       // Start initial workers up to the concurrency limit
-      const initialBatch = queue.splice(0, CONCURRENT_LIMIT);
-      initialBatch.forEach((queueItem) => {
+      // Don't splice - just start the first CONCURRENT_LIMIT items
+      const startIndex = queueIndex;
+      queueIndex = Math.min(CONCURRENT_LIMIT, queue.length);
+      for (let i = startIndex; i < queueIndex; i++) {
         activeWorkers++;
-        processUpload(queueItem).catch(() => {
-          // Error already handled in processUpload
+        processUpload(queue[i]).catch((err) => {
+          // Error already handled in processUpload, but log for debugging
+          console.error("Initial worker processUpload error:", err);
         });
-      });
+      }
 
       // Wait for all workers to complete
       await allCompletePromise;
