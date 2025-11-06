@@ -450,11 +450,6 @@ export async function purgeDocuments(
     // Use dedicated purge endpoint accepting { documents_id: string[] }
     const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/purge`;
 
-      url,
-      count: documentsIds.length,
-      documentsIds,
-    });
-
     const response = await fetch(url, {
       method: "DELETE",
       headers: {
@@ -464,11 +459,6 @@ export async function purgeDocuments(
       cache: "no-cache",
       body: JSON.stringify({ documents_id: documentsIds }),
       signal: AbortSignal.timeout(30000),
-    });
-
-    console.log("🧹 Purge response ←", {
-      status: response.status,
-      ok: response.ok,
     });
 
     if (!response.ok) {
