@@ -162,9 +162,8 @@ export function UploadDocumentModalOptimized({
 
     try {
       // Worker pool pattern: Upload files concurrently with a concurrency limit
-      // API can handle 100 calls/minute, browser can handle ~30-50 concurrent connections
-      // Using 30 concurrent uploads maximizes throughput while respecting limits
-      const CONCURRENT_LIMIT = 30;
+      // Limit to 10 concurrent uploads to avoid rate limiting and browser connection issues
+      const CONCURRENT_LIMIT = 10;
 
       // Create a queue of files to upload with their indices
       // Don't mutate the queue - use an index to track position
