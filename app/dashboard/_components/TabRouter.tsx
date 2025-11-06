@@ -2,28 +2,38 @@
 
 import * as React from "react";
 import { useHash } from "@/hooks/useHash";
-import { DocumentsContent } from "../_documents/DocumentsContent";
-import { ProjectsContent } from "../_projects/ProjectsContent";
-import { UserContent } from "../_users/UserContent";
-import { IntegrationsContent } from "../_integrations/IntegrationsContent";
-import { AssistantContent } from "../_assistant/AssistantContent";
+import dynamic from "next/dynamic";
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-semibold text-gray-900">{title}</h1>
-      </div>
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-        <p className="text-gray-600">{title} content will appear here.</p>
-      </div>
-    </div>
-  );
-}
+// Lazy load tab components - only load when needed
+const DocumentsContent = dynamic(
+  () => import("../_documents/DocumentsContent").then((mod) => ({ default: mod.DocumentsContent })),
+  { loading: () => <div className="p-6">Loading documents...</div> }
+);
+
+const ProjectsContent = dynamic(
+  () => import("../_projects/ProjectsContent").then((mod) => ({ default: mod.ProjectsContent })),
+  { loading: () => <div className="p-6">Loading projects...</div> }
+);
+
+const UserContent = dynamic(
+  () => import("../_users/UserContent").then((mod) => ({ default: mod.UserContent })),
+  { loading: () => <div className="p-6">Loading users...</div> }
+);
+
+const IntegrationsContent = dynamic(
+  () => import("../_integrations/IntegrationsContent").then((mod) => ({ default: mod.IntegrationsContent })),
+  { loading: () => <div className="p-6">Loading integrations...</div> }
+);
+
+const AssistantContent = dynamic(
+  () => import("../_assistant/AssistantContent").then((mod) => ({ default: mod.AssistantContent })),
+  { loading: () => <div className="p-6">Loading assistant...</div> }
+);
 
 export function TabRouter() {
   const { hash } = useHash("#Documents");
   const [isHydrated, setIsHydrated] = React.useState(false);
+  const [loadedTabs, setLoadedTabs] = React.useState<Set<string>>(new Set(["documents"]));
 
   React.useEffect(() => {
     setIsHydrated(true);
@@ -45,6 +55,13 @@ export function TabRouter() {
 
   const activeTab = getActiveTab();
 
+  // Mark tab as loaded when it becomes active
+  React.useEffect(() => {
+    if (activeTab && !loadedTabs.has(activeTab)) {
+      setLoadedTabs((prev) => new Set([...prev, activeTab]));
+    }
+  }, [activeTab, loadedTabs]);
+
   // Show default content until hydrated to prevent hydration mismatch
   if (!isHydrated) {
     return <DocumentsContent />;
@@ -52,34 +69,44 @@ export function TabRouter() {
 
   return (
     <>
-      {/* Render all tabs but only show the active one */}
-      <div
-        className={`${activeTab === "documents" ? "block" : "hidden"} h-full`}
-      >
-        <DocumentsContent />
-      </div>
+      {/* Only render tabs that have been loaded */}
+      {loadedTabs.has("documents") && (
+        <div
+          className={`${activeTab === "documents" ? "block" : "hidden"} h-full`}
+        >
+          <DocumentsContent />
+        </div>
+      )}
 
-      <div
-        className={`${activeTab === "projects" ? "block" : "hidden"} h-full`}
-      >
-        <ProjectsContent />
-      </div>
+      {loadedTabs.has("projects") && (
+        <div
+          className={`${activeTab === "projects" ? "block" : "hidden"} h-full`}
+        >
+          <ProjectsContent />
+        </div>
+      )}
 
-      <div className={`${activeTab === "users" ? "block" : "hidden"} h-full`}>
-        <UserContent />
-      </div>
+      {loadedTabs.has("users") && (
+        <div className={`${activeTab === "users" ? "block" : "hidden"} h-full`}>
+          <UserContent />
+        </div>
+      )}
 
-      <div
-        className={`${
-          activeTab === "integrations" ? "block" : "hidden"
-        } h-full`}
-      >
-        <IntegrationsContent />
-      </div>
+      {loadedTabs.has("integrations") && (
+        <div
+          className={`${
+            activeTab === "integrations" ? "block" : "hidden"
+          } h-full`}
+        >
+          <IntegrationsContent />
+        </div>
+      )}
 
-      <div className={`${activeTab === "ai" ? "block" : "hidden"} h-full`}>
-        <AssistantContent />
-      </div>
+      {loadedTabs.has("ai") && (
+        <div className={`${activeTab === "ai" ? "block" : "hidden"} h-full`}>
+          <AssistantContent />
+        </div>
+      )}
     </>
   );
 }

@@ -51,8 +51,8 @@ export interface ConversationWithMessages extends Conversation {
 }
 
 export interface StartConversationResponse {
-  llm_answer: ConversationMessage;
-  Conversation: Conversation;
+  llm_answer: LLMAnswer;
+  conversation: Conversation;
 }
 
 export interface StartConversationParams {

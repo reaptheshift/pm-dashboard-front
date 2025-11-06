@@ -76,8 +76,35 @@ export function AssistantContent() {
   const [creatingConversationId, setCreatingConversationId] = React.useState<
     string | null
   >(null);
+  const [loadingMessage, setLoadingMessage] = React.useState("Thinking");
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  // Rotate loading messages while waiting for API response
+  React.useEffect(() => {
+    if (!isLoading) {
+      setLoadingMessage("Thinking");
+      return;
+    }
+
+    const messages = [
+      "Thinking",
+      "Analyzing",
+      "Fetching",
+      "Brewing coffee",
+      "Drinking coffee",
+      "Finishing",
+    ];
+    setLoadingMessage(messages[0]);
+
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % messages.length;
+      setLoadingMessage(messages[currentIndex]);
+    }, 2000); // Change message every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const scrollToBottom = React.useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -326,29 +353,31 @@ export function AssistantContent() {
           documents_id: documentsToReference.map((doc) => doc.id),
         });
 
-        // Set the actual conversation ID
-        setCurrentConversationId(startResponse.Conversation.id);
+        // Set the actual conversation ID from the conversation object
+        setCurrentConversationId(startResponse.conversation.id);
         setIsCreatingConversation(false);
         setCreatingConversationId(null);
 
-        // Add the assistant's response
+        // Extract referenced documents from sources (new format)
         const assistantReferencedDocs: ReferencedDocumentInfo[] | undefined =
-          startResponse.llm_answer.refrenced_documents?.map((refDoc) => ({
-            id: refDoc.documents.id,
-            name: refDoc.documents.name,
-            type: refDoc.documents.type || "doc",
-            path: refDoc.documents.path,
-            size: refDoc.documents.size,
+          startResponse.llm_answer.sources?.map((source) => ({
+            id: source.document_id,
+            name: source.document_name,
+            type: "doc", // Default type, could be enhanced if API provides it
           }));
 
+        // Use answer_markdown as the content (new format)
         const assistantMessage: Message = {
-          id: startResponse.llm_answer.id,
+          id: startResponse.llm_answer.id || Date.now().toString(),
           role: "assistant",
-          content: startResponse.llm_answer.content,
+          content:
+            startResponse.llm_answer.answer_markdown ||
+            startResponse.llm_answer.content ||
+            "",
           timestamp: new Date(
             typeof startResponse.llm_answer.created_at === "number"
               ? startResponse.llm_answer.created_at
-              : startResponse.llm_answer.created_at
+              : startResponse.llm_answer.created_at || Date.now()
           ),
           referencedDocuments:
             assistantReferencedDocs && assistantReferencedDocs.length > 0
@@ -356,9 +385,13 @@ export function AssistantContent() {
               : undefined,
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        // Add message with animation - use setTimeout to trigger animation
+        setTimeout(() => {
+          setMessages((prev) => [...prev, assistantMessage]);
+        }, 100);
 
-        // Refresh conversations list to include the new conversation
+        // Refresh conversations list to include the new conversation with chat_title
+        // The conversation is already created on the backend with the chat_title
         try {
           const updatedConversations = await getConversations(
             selectedProjectId ? Number(selectedProjectId) : undefined
@@ -405,7 +438,10 @@ export function AssistantContent() {
               : undefined,
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        // Add message with animation
+        setTimeout(() => {
+          setMessages((prev) => [...prev, assistantMessage]);
+        }, 100);
 
         // Refresh conversations list after sending a message
         try {
@@ -516,7 +552,7 @@ export function AssistantContent() {
       </div>
 
       {/* Main Content with Sidebar */}
-      <div className="flex-1 flex gap-4 h-full">
+      <div className="flex-1 flex gap-4">
         {/* Conversations Sidebar */}
         <ConversationsSidebar
           conversations={conversations}
@@ -529,9 +565,9 @@ export function AssistantContent() {
         />
 
         {/* Chat Container */}
-        <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="flex-1 h-full flex flex-col bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="max-h-[750px] h-full overflow-y-auto p-6 space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -546,15 +582,21 @@ export function AssistantContent() {
                 </p>
               </div>
             ) : (
-              messages.map((message) => {
+              messages.map((message, index) => {
                 // Use referenced documents from message (already extracted from API)
                 const referencedDocs = message.referencedDocuments || [];
+                const isLastMessage = index === messages.length - 1;
+                const isAssistant = message.role === "assistant";
 
                 return (
                   <div
                     key={message.id}
                     className={`flex gap-3 ${
                       message.role === "user" ? "justify-end" : "justify-start"
+                    } ${
+                      isLastMessage && isAssistant
+                        ? "animate-in fade-in slide-in-from-bottom-4 duration-500"
+                        : ""
                     }`}
                   >
                     {message.role === "assistant" && (
@@ -698,12 +740,19 @@ export function AssistantContent() {
               })
             )}
             {isLoading && (
-              <div className="flex gap-3 justify-start">
+              <div className="flex gap-3 justify-start animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
-                <div className="bg-gray-50 rounded-lg px-4 py-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                <div className="bg-gray-50 rounded-lg px-4 py-3 flex items-center gap-2">
+                  <span className="text-sm text-gray-700">
+                    {loadingMessage}
+                  </span>
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                  </div>
                 </div>
               </div>
             )}

@@ -13,7 +13,6 @@ import {
 import { FileTypeIcon, FileType } from "./fileTypeIcon";
 import { StatusBadge, StatusType } from "./statusBadge";
 import { ActionButtons } from "./actionButtons";
-import { TablePagination } from "./tablePagination";
 import { InfoPopover } from "./universalPopover";
 import { Badge } from "@/components/ui/badge";
 
@@ -41,14 +40,6 @@ export function DataTable({
   onDelete,
   onFileClick,
 }: DataTableProps) {
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentData = data.slice(startIndex, endIndex);
-
   // Helper function to truncate filename
   const truncateFileName = (
     fileName: string | undefined,
@@ -93,7 +84,7 @@ export function DataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {currentData.map((row, index) => (
+          {data.map((row, index) => (
             <TableRow
               key={row.id ? row.id : `row-${index}`}
               className={cn(
@@ -211,13 +202,6 @@ export function DataTable({
           ))}
         </TableBody>
       </Table>
-
-      {/* Pagination */}
-      <TablePagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
     </div>
   );
 }

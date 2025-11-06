@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useHash } from "@/hooks/useHash";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
+import { TablePagination } from "./_components/tablePagination";
 import {
   getDocuments,
   getDocumentById,
@@ -41,6 +42,27 @@ export function DocumentsContent() {
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
 
+  // Pagination and filtering state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [debouncedStatusFilter, setDebouncedStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date-desc");
+  const [debouncedSortBy, setDebouncedSortBy] = useState<string>("date-desc");
+  const [tableLoading, setTableLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [paginationData, setPaginationData] = useState<{
+    itemsTotal?: number;
+    pageTotal?: number;
+    curPage?: number;
+    nextPage?: number | null;
+    prevPage?: number | null;
+    totalCompleted?: number;
+    totalProcessing?: number;
+    totalFailed?: number;
+  }>({});
+
   // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 B";
@@ -61,28 +83,108 @@ export function DocumentsContent() {
     return `${day}/${month}/${year} ${hours}:${minutes}`
   }
 
-  // Load documents on mount
-  useEffect(() => {
-    loadDocuments();
-  }, []);
+  const loadDocuments = useCallback(
+    async (showLoading = true, showTableLoading = false) => {
+      try {
+        if (showLoading) {
+          setLoading(true);
+        }
+        if (showTableLoading) {
+          setTableLoading(true);
+        }
+        setError(null);
+        
+        // Parse sort parameter
+        let sortParam: { sortBy: string; order: "asc" | "desc" }[] | undefined;
+        if (debouncedSortBy) {
+          const [field, order] = debouncedSortBy.split('-');
+          let sortByField = '';
+          if (field === 'date') {
+            sortByField = 'created_at';
+          } else if (field === 'name') {
+            sortByField = 'name';
+          } else if (field === 'size') {
+            sortByField = 'size';
+          }
+          
+          if (sortByField) {
+            sortParam = [{ sortBy: sortByField, order: order as "asc" | "desc" }];
+          }
+        }
+        
+        const response = await getDocuments({
+          page: currentPage,
+          per_page: perPage,
+          status: debouncedStatusFilter === "all" ? undefined : debouncedStatusFilter,
+          query: debouncedSearchQuery || undefined,
+          sort: sortParam,
+        });
+        setDocuments(response.documents);
+        setPaginationData({
+          itemsTotal: response.itemsTotal,
+          pageTotal: response.pageTotal,
+          curPage: response.curPage,
+          nextPage: response.nextPage,
+          prevPage: response.prevPage,
+          totalCompleted: response.totalCompleted,
+          totalProcessing: response.totalProcessing,
+          totalFailed: response.totalFailed,
+        });
+      } catch (err) {
+        setError("Failed to load documents. Please try again.");
+        setDocuments([]);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+        if (showTableLoading) {
+          setTableLoading(false);
+        }
+      }
+    },
+    [currentPage, perPage, debouncedStatusFilter, debouncedSearchQuery, debouncedSortBy]
+  );
 
-  const loadDocuments = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      setError(null);
-      const response = await getDocuments();
-      setDocuments(response.documents);
-    } catch (err) {
-      setError("Failed to load documents. Please try again.");
-      setDocuments([]);
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
+  // Debounce search query - only trigger API call after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to first page on search
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Debounce status filter - only trigger API call after user stops changing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedStatusFilter(statusFilter);
+      setCurrentPage(1); // Reset to first page on filter change
+    }, 300); // 300ms delay (shorter for selects)
+
+    return () => clearTimeout(timer);
+  }, [statusFilter]);
+
+  // Debounce sort - only trigger API call after user stops changing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSortBy(sortBy);
+      setCurrentPage(1); // Reset to first page on sort change
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [sortBy]);
+
+  // Track initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Load documents on mount and when filters change (only show table loading for filter changes)
+  useEffect(() => {
+    loadDocuments(isInitialLoad, !isInitialLoad);
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
     }
-  };
+  }, [loadDocuments, isInitialLoad]);
 
   // Manual refresh function
   const handleRefresh = () => {
@@ -359,20 +461,47 @@ export function DocumentsContent() {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (documents.length === 0 || isPurging) return;
-                    const ids = documents.map((d) => d.fileId);
+                    if (isPurging) return;
                     const toastId = toast.loading("Purging all documents...", {
                       duration: Infinity,
                     });
                     setIsPurging(true);
                     try {
-                      await purgeDocuments(ids);
+                      // First, fetch total count if not available
+                      let totalItems = paginationData.itemsTotal;
+                      if (!totalItems) {
+                        const countResponse = await getDocuments({
+                          page: 1,
+                          per_page: 1,
+                        });
+                        totalItems = countResponse.itemsTotal || 1000;
+                      }
+
+                      // Then fetch all documents with per_page = total items
+                      const allDocsResponse = await getDocuments({
+                        per_page: totalItems,
+                      });
+                      const allIds = allDocsResponse.documents.map(
+                        (d) => d.fileId
+                      );
+                      if (allIds.length === 0) {
+                        toast.error("No documents to purge", {
+                          id: toastId,
+                          duration: 3000,
+                        });
+                        setPurgeOpen(false);
+                        return;
+                      }
+                      await purgeDocuments(allIds);
                       setDocuments([]);
                       setPurgeOpen(false);
                       toast.success("All documents purged", {
                         id: toastId,
                         duration: 3000,
                       });
+                      // Refresh the list
+                      setCurrentPage(1);
+                      loadDocuments();
                     } catch (e: any) {
                       toast.error("Failed to purge documents", {
                         id: toastId,
@@ -446,7 +575,7 @@ export function DocumentsContent() {
                   Total Documents
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {(documents || []).length}
+                  {paginationData.itemsTotal || (documents || []).length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -468,11 +597,7 @@ export function DocumentsContent() {
                   Processing
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {
-                    (documents || []).filter(
-                      (d) => d.processingStatus === "PROCESSING"
-                    ).length
-                  }
+                  {paginationData.totalProcessing ?? 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -494,11 +619,7 @@ export function DocumentsContent() {
                   Completed
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {
-                    (documents || []).filter(
-                      (d) => d.processingStatus === "COMPLETED"
-                    ).length
-                  }
+                  {paginationData.totalCompleted ?? 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -518,11 +639,7 @@ export function DocumentsContent() {
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-2">Failed</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {
-                    (documents || []).filter(
-                      (d) => d.processingStatus === "FAILED"
-                    ).length
-                  }
+                  {paginationData.totalFailed ?? 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-red-50 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
@@ -574,24 +691,32 @@ export function DocumentsContent() {
                 <Input
                   type="text"
                   placeholder="Search by key"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    // Don't reset page here - debounce will handle it
+                  }}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
             <div className="flex-1 flex">
-              <Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  // Don't reset page here - debounce will handle it
+                }}
+              >
                 <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <SelectValue placeholder="By status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="archived">Archived</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="accepting-bids">Accepting Bids</SelectItem>
-                  <SelectItem value="deadline-passed">
-                    Deadline Passed
-                  </SelectItem>
-                  <SelectItem value="awarded">Awarded</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -610,36 +735,23 @@ export function DocumentsContent() {
             </div>
 
             <div className="flex-1 flex">
-              <Select>
-                <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <SelectValue placeholder="By tags" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="materials">Materials</SelectItem>
-                  <SelectItem value="construction">Construction</SelectItem>
-                  <SelectItem value="photo">Photo</SelectItem>
-                  <SelectItem value="technical">Technical</SelectItem>
-                  <SelectItem value="financial">Financial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex-1 flex">
-              <Select>
+              <Select
+                value={sortBy}
+                onValueChange={(value) => {
+                  setSortBy(value);
+                  // Don't reset page here - debounce will handle it
+                }}
+              >
                 <SelectTrigger className="w-full flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <SelectValue placeholder="Sort by: Date" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
                   <SelectItem value="date-desc">Date (Newest First)</SelectItem>
+                  <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
                   <SelectItem value="name-asc">Name (A-Z)</SelectItem>
                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                  <SelectItem value="size-asc">
-                    Size (Smallest First)
-                  </SelectItem>
-                  <SelectItem value="size-desc">
-                    Size (Largest First)
-                  </SelectItem>
+                  <SelectItem value="size-asc">Size (Smallest First)</SelectItem>
+                  <SelectItem value="size-desc">Size (Largest First)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -661,7 +773,7 @@ export function DocumentsContent() {
               </button>
             </div>
           </div>
-        ) : documents.length === 0 ? (
+        ) : (!loading && (documents.length === 0 || paginationData.itemsTotal === 0)) ? (
           <div className="bg-white border border-gray-200 rounded-xl p-12 shadow-sm text-center">
             <svg
               className="w-12 h-12 text-gray-400 mx-auto mb-4"
@@ -683,173 +795,221 @@ export function DocumentsContent() {
             </UploadDocumentModalWrapper>
           </div>
         ) : (
-          <DataTable
-            data={tableData}
-            onDelete={async (fileId, fileName) => {
-              const toastId = toast.loading("Deleting document...", {
-                description: fileName,
-                duration: Infinity,
-              });
-
-              try {
-                await deleteDocument(fileId);
-
-                // Optimistically remove from UI
-                setDocuments((prev) => prev.filter((d) => d.fileId !== fileId));
-
-                toast.success("Document deleted", {
-                  id: toastId,
+          <>
+            <div className="relative">
+              {tableLoading && (
+                <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center rounded-xl">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+                    <p className="text-sm text-gray-600">Loading documents...</p>
+                  </div>
+                </div>
+              )}
+              <DataTable
+                data={tableData}
+              onDelete={async (fileId, fileName) => {
+                const toastId = toast.loading("Deleting document...", {
                   description: fileName,
-                  duration: 3000,
-                });
-              } catch (e: any) {
-                toast.error("Failed to delete document", {
-                  id: toastId,
-                  description:
-                    e?.message || "An error occurred while deleting the file",
-                  duration: 4000,
-                });
-              }
-            }}
-            onFileClick={async (fileId) => {
-              console.log("🟢 DocumentsContent: onFileClick handler called", {
-                fileId,
-              });
-
-              // Show loading toast with progress bar
-              const toastId = toast.loading(
-                "Requesting file from secure server...",
-                {
-                  description: (
-                    <div className="space-y-2 mt-1">
-                      <p className="text-sm text-gray-600">
-                        Fetching document securely from server
-                      </p>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full animate-progress" />
-                      </div>
-                    </div>
-                  ),
-                  duration: Infinity, // Keep open until we dismiss it
-                }
-              );
-
-              try {
-                // Call secured Xano document details API when filename is clicked
-                console.log("🟡 DocumentsContent: Calling getDocumentById...");
-                const result = await getDocumentById(fileId);
-                console.log(
-                  "✅ DocumentsContent: getDocumentById success",
-                  result
-                );
-
-                // Update toast to success
-                toast.success("File retrieved successfully", {
-                  id: toastId,
-                  description: "Preparing download...",
-                  duration: 2000,
+                  duration: Infinity,
                 });
 
-                // Extract file name from file_metadata (as per user requirements)
-                const fileName =
-                  result?.file_metadata?.file_name ||
-                  result?.file?.name ||
-                  result?.name ||
-                  `document-${fileId}.pdf`;
+                try {
+                  await deleteDocument(fileId);
 
-                // Extract file type/mime
-                const fileType =
-                  result?.file_metadata?.file_mime ||
-                  result?.file_metadata?.file_type ||
-                  result?.file?.mime ||
-                  result?.mime ||
-                  "application/pdf";
+                  // Optimistically remove from UI
+                  setDocuments((prev) => prev.filter((d) => d.fileId !== fileId));
 
-                // Check for presigned S3 URL first (new expected format: file.url)
-                const downloadUrl =
-                  result?.file?.url ||
-                  result?.file_metadata?.download_url ||
-                  result?.file_metadata?.s3_url ||
-                  result?.file_metadata?.presigned_url ||
-                  result?.download_url ||
-                  result?.s3_url ||
-                  result?.presigned_url;
-
-                if (downloadUrl) {
-                  // Use the presigned S3 URL directly
-                  console.log("📥 Using presigned S3 URL:", downloadUrl);
-
-                  // Check expiration if available
-                  const expiresAt = result?.file?.expires_at;
-                  if (expiresAt) {
-                    const expirationTime = parseInt(String(expiresAt));
-                    const currentTime = Date.now();
-                    if (currentTime >= expirationTime) {
-                      toast.error("Download link expired", {
-                        id: toastId,
-                        description:
-                          "The download link has expired. Please try again.",
-                        duration: 4000,
-                      });
-                      return;
-                    }
-                    console.log(
-                      "✅ URL valid until:",
-                      new Date(expirationTime).toLocaleString()
-                    );
-                  }
-
-                  // Open PDF in modal dialog with iframe
-                  setPdfUrl(downloadUrl);
-                  setPdfFileName(fileName);
-                  setPdfViewerOpen(true);
-
-                  toast.success("File loaded", {
+                  toast.success("Document deleted", {
                     id: toastId,
-                    description: `Opening ${fileName} in viewer`,
-                    duration: 2000,
+                    description: fileName,
+                    duration: 3000,
                   });
-                } else if (result?.file?.data || result?.data) {
-                  // Fallback: Use raw file data if URL not available
-                  console.log("⚠️ No URL found, using raw data as fallback");
-                  const fileData = result?.file?.data || result?.data;
-                  await handleFileDownload(fileData, fileName, fileType);
-                } else {
-                  toast.error("No file URL or data found", {
+                } catch (e: any) {
+                  toast.error("Failed to delete document", {
                     id: toastId,
                     description:
-                      "The response does not contain a file URL or file data",
+                      e?.message || "An error occurred while deleting the file",
                     duration: 4000,
                   });
                 }
-              } catch (e: any) {
-                console.error("❌ DocumentsContent: getDocumentById error", e);
+              }}
+              onFileClick={async (fileId) => {
+                console.log("🟢 DocumentsContent: onFileClick handler called", {
+                  fileId,
+                });
 
-                // Check if it's a 400 status code
-                if (e?.status === 400) {
-                  toast.error("Bad Request", {
+                // Show loading toast with progress bar
+                const toastId = toast.loading(
+                  "Requesting file from secure server...",
+                  {
+                    description: (
+                      <div className="space-y-2 mt-1">
+                        <p className="text-sm text-gray-600">
+                          Fetching document securely from server
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full bg-blue-600 rounded-full animate-progress" />
+                        </div>
+                      </div>
+                    ),
+                    duration: Infinity, // Keep open until we dismiss it
+                  }
+                );
+
+                try {
+                  // Call secured Xano document details API when filename is clicked
+                  console.log("🟡 DocumentsContent: Calling getDocumentById...");
+                  const result = await getDocumentById(fileId);
+                  console.log(
+                    "✅ DocumentsContent: getDocumentById success",
+                    result
+                  );
+
+                  // Update toast to success
+                  toast.success("File retrieved successfully", {
+                    id: toastId,
+                    description: "Preparing download...",
+                    duration: 2000,
+                  });
+
+                  // Extract file name from file_metadata (as per user requirements)
+                  const fileName =
+                    result?.file_metadata?.file_name ||
+                    result?.file?.name ||
+                    result?.name ||
+                    `document-${fileId}.pdf`;
+
+                  // Extract file type/mime
+                  const fileType =
+                    result?.file_metadata?.file_mime ||
+                    result?.file_metadata?.file_type ||
+                    result?.file?.mime ||
+                    result?.mime ||
+                    "application/pdf";
+
+                  // Check for presigned S3 URL first (new expected format: file.url)
+                  const downloadUrl =
+                    result?.file?.url ||
+                    result?.file_metadata?.download_url ||
+                    result?.file_metadata?.s3_url ||
+                    result?.file_metadata?.presigned_url ||
+                    result?.download_url ||
+                    result?.s3_url ||
+                    result?.presigned_url;
+
+                  if (downloadUrl) {
+                    // Use the presigned S3 URL directly
+                    console.log("📥 Using presigned S3 URL:", downloadUrl);
+
+                    // Check expiration if available
+                    const expiresAt = result?.file?.expires_at;
+                    if (expiresAt) {
+                      const expirationTime = parseInt(String(expiresAt));
+                      const currentTime = Date.now();
+                      if (currentTime >= expirationTime) {
+                        toast.error("Download link expired", {
+                          id: toastId,
+                          description:
+                            "The download link has expired. Please try again.",
+                          duration: 4000,
+                        });
+                        return;
+                      }
+                      console.log(
+                        "✅ URL valid until:",
+                        new Date(expirationTime).toLocaleString()
+                      );
+                    }
+
+                    // Open PDF in modal dialog with iframe
+                    setPdfUrl(downloadUrl);
+                    setPdfFileName(fileName);
+                    setPdfViewerOpen(true);
+
+                    toast.success("File loaded", {
+                      id: toastId,
+                      description: `Opening ${fileName} in viewer`,
+                      duration: 2000,
+                    });
+                  } else if (result?.file?.data || result?.data) {
+                    // Fallback: Use raw file data if URL not available
+                    console.log("⚠️ No URL found, using raw data as fallback");
+                    const fileData = result?.file?.data || result?.data;
+                    await handleFileDownload(fileData, fileName, fileType);
+                  } else {
+                    toast.error("No file URL or data found", {
+                      id: toastId,
+                      description:
+                        "The response does not contain a file URL or file data",
+                      duration: 4000,
+                    });
+                  }
+                } catch (e: any) {
+                  console.error("❌ DocumentsContent: getDocumentById error", e);
+
+                  // Check if it's a 400 status code
+                  if (e?.status === 400) {
+                    toast.error("Bad Request", {
+                      id: toastId,
+                      description:
+                        e?.message ||
+                        "Invalid request. Please check the file ID and try again.",
+                      duration: 5000,
+                    });
+                    // Don't open anything for 400 errors
+                    return;
+                  }
+
+                  // Handle other errors
+                  toast.error("Failed to retrieve file", {
                     id: toastId,
                     description:
-                      e?.message ||
-                      "Invalid request. Please check the file ID and try again.",
-                    duration: 5000,
+                      e instanceof Error
+                        ? e.message
+                        : "An error occurred while fetching the document",
+                    duration: 4000,
                   });
-                  // Don't open anything for 400 errors
-                  return;
                 }
-
-                // Handle other errors
-                toast.error("Failed to retrieve file", {
-                  id: toastId,
-                  description:
-                    e instanceof Error
-                      ? e.message
-                      : "An error occurred while fetching the document",
-                  duration: 4000,
-                });
-              }
-            }}
-          />
+              }}
+              />
+            </div>
+            {/* Pagination Controls */}
+            {paginationData.pageTotal && paginationData.pageTotal > 0 && paginationData.itemsTotal && paginationData.itemsTotal > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-700">Items per page:</span>
+                    <Select
+                      value={String(perPage)}
+                      onValueChange={(value) => {
+                        setPerPage(Number(value));
+                        setCurrentPage(1); // Reset to first page
+                      }}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-500">
+                      Showing {documents.length} of{" "}
+                      {paginationData.itemsTotal || 0} documents
+                    </span>
+                  </div>
+                  <TablePagination
+                    currentPage={paginationData.curPage || currentPage}
+                    totalPages={paginationData.pageTotal || 1}
+                    onPageChange={(page) => setCurrentPage(page)}
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )
       )}
 

@@ -138,6 +138,32 @@ function transformXanoDocument(xanoDoc: XanoDocument): Document {
 export interface DocumentsResponse {
   documents: Document[];
   total: number;
+  // Pagination metadata from API
+  itemsReceived?: number;
+  curPage?: number;
+  nextPage?: number | null;
+  prevPage?: number | null;
+  offset?: number;
+  perPage?: number;
+  itemsTotal?: number;
+  pageTotal?: number;
+  // Status totals from API
+  totalCompleted?: number;
+  totalProcessing?: number;
+  totalFailed?: number;
+}
+
+export interface SortParam {
+  sortBy: string;
+  order: "asc" | "desc";
+}
+
+export interface GetDocumentsParams {
+  page?: number;
+  per_page?: number;
+  status?: string;
+  query?: string;
+  sort?: SortParam[];
 }
 
 // Get current user ID for client-side use
@@ -170,28 +196,20 @@ export async function getAuthTokenForClient(): Promise<string | null> {
 
 // Get single document details from Xano by ID
 export async function getDocumentById(documentsId: string) {
-  console.log("🟠 getDocumentById: Called with documentsId", documentsId);
   try {
     if (!documentsId) {
       throw new Error("Document ID is required");
     }
 
     const { getAuthToken } = await import("@/lib/auth-server");
-    console.log("🟠 getDocumentById: Getting auth token...");
     const token = await getAuthToken();
     if (!token) {
-      console.error("🟠 getDocumentById: No auth token found");
       throw new Error("Authentication required");
     }
-    console.log(
-      "🟠 getDocumentById: Auth token obtained",
-      token.substring(0, 20) + "..."
-    );
 
     const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents/${encodeURIComponent(
       documentsId
     )}`;
-    console.log("🟠 getDocumentById: Fetching URL", url);
 
     const response = await fetch(url, {
       method: "GET",
@@ -203,18 +221,8 @@ export async function getDocumentById(documentsId: string) {
       signal: AbortSignal.timeout(30000),
     });
 
-    console.log(
-      "🟠 getDocumentById: Response status",
-      response.status,
-      response.statusText
-    );
-
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error("🟠 getDocumentById: Response not OK", {
-        status: response.status,
-        errorText,
-      });
 
       // Create error object with status code for client-side handling
       const error: any = new Error(
@@ -230,56 +238,110 @@ export async function getDocumentById(documentsId: string) {
     }
 
     const result = await response.json();
-    console.log("🟠 getDocumentById: Response data", result);
     return result;
   } catch (error) {
-    console.error("🟠 getDocumentById: Error caught", error);
     throw error;
   }
 }
 
-// Get all documents from Xano API
-export async function getDocuments(): Promise<DocumentsResponse> {
+// Get all documents from Xano API with pagination, search, and filtering
+export async function getDocuments(
+  params?: GetDocumentsParams
+): Promise<DocumentsResponse> {
   try {
     // Get auth token for Xano API
     const { getAuthToken } = await import("@/lib/auth-server");
     const token = await getAuthToken();
 
-    const response = await fetch(
-      "https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents",
-      {
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        // Add timeout for connection issues
-        signal: AbortSignal.timeout(30000), // 30 second timeout
-      }
-    );
+    if (!token || token.trim() === "") {
+      throw new Error("Authentication required. Please log in again.");
+    }
+
+    const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/documents`;
+
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) {
+      queryParams.append("page", String(params.page));
+    }
+    if (params?.per_page !== undefined) {
+      queryParams.append("per_page", String(params.per_page));
+    }
+    if (params?.status) {
+      queryParams.append("status", params.status);
+    }
+    if (params?.query) {
+      queryParams.append("query", params.query);
+    }
+    // Add sort as JSON string in query params if present
+    if (params?.sort && params.sort.length > 0) {
+      queryParams.append("sort", JSON.stringify(params.sort));
+    }
+
+    const finalUrl = queryParams.toString()
+      ? `${url}?${queryParams.toString()}`
+      : url;
+
+    const response = await fetch(finalUrl, {
+      method: "GET",
+      cache: "no-cache",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(30000),
+    });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      throw new Error(
-        `Failed to fetch documents: ${response.status}${
-          errorText ? ` - ${errorText}` : ""
-        }`
-      );
+      let errorMessage = `Failed to fetch documents: ${response.status}`;
+
+      if (errorText) {
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage += ` - ${errorJson.message}`;
+          } else {
+            errorMessage += ` - ${errorText}`;
+          }
+        } catch {
+          errorMessage += ` - ${errorText}`;
+        }
+      }
+
+      // If it's an auth error, provide more specific message
+      if (
+        response.status === 401 ||
+        response.status === 403 ||
+        response.status === 500
+      ) {
+        if (
+          errorText.includes("not authorized") ||
+          errorText.includes("authorized")
+        ) {
+          errorMessage +=
+            " (Authentication may have expired. Please try logging in again.)";
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
 
-    // Handle different response formats from Xano
+    // Handle new API response format with pagination
     let documentsArray: XanoDocument[] = [];
 
-    if (Array.isArray(data)) {
-      // Direct array response
+    if (data.items && Array.isArray(data.items)) {
+      // New format with pagination metadata
+      documentsArray = data.items;
+    } else if (Array.isArray(data)) {
+      // Direct array response (fallback)
       documentsArray = data;
     } else if (data.documents && Array.isArray(data.documents)) {
-      // Nested documents array
+      // Nested documents array (fallback)
       documentsArray = data.documents;
     } else if (data.results && Array.isArray(data.results)) {
-      // Alternative nested format
+      // Alternative nested format (fallback)
       documentsArray = data.results;
     } else {
       // Fallback: try to find any array in the response
@@ -291,7 +353,18 @@ export async function getDocuments(): Promise<DocumentsResponse> {
 
     return {
       documents: transformedDocuments,
-      total: transformedDocuments.length,
+      total: data.itemsTotal || transformedDocuments.length,
+      itemsReceived: data.itemsReceived,
+      curPage: data.curPage,
+      nextPage: data.nextPage,
+      prevPage: data.prevPage,
+      offset: data.offset,
+      perPage: data.perPage,
+      itemsTotal: data.itemsTotal,
+      pageTotal: data.pageTotal,
+      totalCompleted: data.totalCompleted,
+      totalProcessing: data.totalProcessing,
+      totalFailed: data.totalFailed,
     };
   } catch (error: any) {
     if (error.name === "TimeoutError" || error.name === "AbortError") {
@@ -377,7 +450,6 @@ export async function purgeDocuments(
     // Use dedicated purge endpoint accepting { documents_id: string[] }
     const url = `https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/purge`;
 
-    console.log("🧹 Purge request →", {
       url,
       count: documentsIds.length,
       documentsIds,
@@ -417,6 +489,3 @@ export async function purgeDocuments(
     throw error;
   }
 }
-
-
-
