@@ -46,7 +46,8 @@ export function DocumentsContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [debouncedStatusFilter, setDebouncedStatusFilter] = useState<string>("all");
+  const [debouncedStatusFilter, setDebouncedStatusFilter] =
+    useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("date-desc");
   const [debouncedSortBy, setDebouncedSortBy] = useState<string>("date-desc");
   const [tableLoading, setTableLoading] = useState(false);
@@ -74,14 +75,14 @@ export function DocumentsContent() {
 
   // Format date-time as dd/MM/yyyy HH:mm
   const formatDateTime = (value: string | Date): string => {
-    const d = typeof value === 'string' ? new Date(value) : value
-    const day = String(d.getDate()).padStart(2, '0')
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const year = d.getFullYear()
-    const hours = String(d.getHours()).padStart(2, '0')
-    const minutes = String(d.getMinutes()).padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  }
+    const d = typeof value === "string" ? new Date(value) : value;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
 
   const loadDocuments = useCallback(
     async (showLoading = true, showTableLoading = false) => {
@@ -93,31 +94,34 @@ export function DocumentsContent() {
           setTableLoading(true);
         }
         setError(null);
-        
+
         // Parse sort parameter - only send if a valid sort option is selected
         let sortParam: { sortBy: string; order: "asc" | "desc" }[] | undefined;
         if (debouncedSortBy && debouncedSortBy !== "date-desc") {
           // Only send sort if it's not the default "date-desc"
-          const [field, order] = debouncedSortBy.split('-');
-          let sortByField = '';
-          if (field === 'date') {
-            sortByField = 'created_at';
-          } else if (field === 'name') {
-            sortByField = 'name';
-          } else if (field === 'size') {
-            sortByField = 'size';
+          const [field, order] = debouncedSortBy.split("-");
+          let sortByField = "";
+          if (field === "date") {
+            sortByField = "created_at";
+          } else if (field === "name") {
+            sortByField = "name";
+          } else if (field === "size") {
+            sortByField = "size";
           }
-          
+
           // Only create sort param if we have a valid field and order
-          if (sortByField && (order === 'asc' || order === 'desc')) {
-            sortParam = [{ sortBy: sortByField, order: order as "asc" | "desc" }];
+          if (sortByField && (order === "asc" || order === "desc")) {
+            sortParam = [
+              { sortBy: sortByField, order: order as "asc" | "desc" },
+            ];
           }
         }
-        
+
         const response = await getDocuments({
           page: currentPage,
           per_page: perPage,
-          status: debouncedStatusFilter === "all" ? undefined : debouncedStatusFilter,
+          status:
+            debouncedStatusFilter === "all" ? undefined : debouncedStatusFilter,
           query: debouncedSearchQuery || undefined,
           sort: sortParam,
         });
@@ -144,7 +148,13 @@ export function DocumentsContent() {
         }
       }
     },
-    [currentPage, perPage, debouncedStatusFilter, debouncedSearchQuery, debouncedSortBy]
+    [
+      currentPage,
+      perPage,
+      debouncedStatusFilter,
+      debouncedSearchQuery,
+      debouncedSortBy,
+    ]
   );
 
   // Debounce search query - only trigger API call after user stops typing
@@ -205,12 +215,14 @@ export function DocumentsContent() {
     setCurrentPage(1);
     setSearchQuery("");
     setStatusFilter("all");
-    
+
     // Optimistically add uploaded files immediately
     setDocuments((prev) => {
       const existingIds = new Set(prev.map((d) => d.fileId));
-      const missingFiles = uploadedFiles.filter((uploaded) => !existingIds.has(uploaded.fileId));
-      
+      const missingFiles = uploadedFiles.filter(
+        (uploaded) => !existingIds.has(uploaded.fileId)
+      );
+
       if (missingFiles.length > 0) {
         // Convert uploaded files to Document format and add to state
         const newDocuments: Document[] = missingFiles.map((uploaded) => ({
@@ -223,20 +235,20 @@ export function DocumentsContent() {
           projectName: uploaded.projectName,
           projectId: uploaded.projectId,
         }));
-        
+
         // Update pagination totals optimistically
         setPaginationData((prev) => ({
           ...prev,
           itemsTotal: (prev.itemsTotal || 0) + missingFiles.length,
           totalProcessing: (prev.totalProcessing || 0) + missingFiles.length,
         }));
-        
+
         return [...prev, ...newDocuments];
       }
-      
+
       return prev;
     });
-    
+
     // Refresh documents list after delay to get accurate totals from API
     setTimeout(async () => {
       await loadDocuments(false, true);
@@ -776,8 +788,12 @@ export function DocumentsContent() {
                   <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
                   <SelectItem value="name-asc">Name (A-Z)</SelectItem>
                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                  <SelectItem value="size-asc">Size (Smallest First)</SelectItem>
-                  <SelectItem value="size-desc">Size (Largest First)</SelectItem>
+                  <SelectItem value="size-asc">
+                    Size (Smallest First)
+                  </SelectItem>
+                  <SelectItem value="size-desc">
+                    Size (Largest First)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -786,8 +802,8 @@ export function DocumentsContent() {
       )}
 
       {/* Documents Table */}
-      {shouldShowDocuments && (
-        error ? (
+      {shouldShowDocuments &&
+        (error ? (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
@@ -799,7 +815,8 @@ export function DocumentsContent() {
               </button>
             </div>
           </div>
-        ) : (!loading && (documents.length === 0 || paginationData.itemsTotal === 0)) ? (
+        ) : !loading &&
+          (documents.length === 0 || paginationData.itemsTotal === 0) ? (
           <div className="bg-white border border-gray-200 rounded-xl p-12 shadow-sm text-center">
             <svg
               className="w-12 h-12 text-gray-400 mx-auto mb-4"
@@ -827,217 +844,236 @@ export function DocumentsContent() {
                 <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center rounded-xl">
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
-                    <p className="text-sm text-gray-600">Loading documents...</p>
+                    <p className="text-sm text-gray-600">
+                      Loading documents...
+                    </p>
                   </div>
                 </div>
               )}
               <DataTable
                 data={tableData}
-              onDelete={async (fileId, fileName) => {
-                const toastId = toast.loading("Deleting document...", {
-                  description: fileName,
-                  duration: Infinity,
-                });
-
-                try {
-                  await deleteDocument(fileId);
-
-                  // Optimistically remove from UI
-                  setDocuments((prev) => prev.filter((d) => d.fileId !== fileId));
-
-                  toast.success("Document deleted", {
-                    id: toastId,
+                onDelete={async (fileId, fileName) => {
+                  const toastId = toast.loading("Deleting document...", {
                     description: fileName,
-                    duration: 3000,
-                  });
-                } catch (e: any) {
-                  toast.error("Failed to delete document", {
-                    id: toastId,
-                    description:
-                      e?.message || "An error occurred while deleting the file",
-                    duration: 4000,
-                  });
-                }
-              }}
-              onFileClick={async (fileId) => {
-                console.log("🟢 DocumentsContent: onFileClick handler called", {
-                  fileId,
-                });
-
-                // Show loading toast with progress bar
-                const toastId = toast.loading(
-                  "Requesting file from secure server...",
-                  {
-                    description: (
-                      <div className="space-y-2 mt-1">
-                        <p className="text-sm text-gray-600">
-                          Fetching document securely from server
-                        </p>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full bg-blue-600 rounded-full animate-progress" />
-                        </div>
-                      </div>
-                    ),
-                    duration: Infinity, // Keep open until we dismiss it
-                  }
-                );
-
-                try {
-                  // Call secured Xano document details API when filename is clicked
-                  console.log("🟡 DocumentsContent: Calling getDocumentById...");
-                  const result = await getDocumentById(fileId);
-                  console.log(
-                    "✅ DocumentsContent: getDocumentById success",
-                    result
-                  );
-
-                  // Update toast to success
-                  toast.success("File retrieved successfully", {
-                    id: toastId,
-                    description: "Preparing download...",
-                    duration: 2000,
+                    duration: Infinity,
                   });
 
-                  // Extract file name from file_metadata (as per user requirements)
-                  const fileName =
-                    result?.file_metadata?.file_name ||
-                    result?.file?.name ||
-                    result?.name ||
-                    `document-${fileId}.pdf`;
+                  try {
+                    await deleteDocument(fileId);
 
-                  // Extract file type/mime
-                  const fileType =
-                    result?.file_metadata?.file_mime ||
-                    result?.file_metadata?.file_type ||
-                    result?.file?.mime ||
-                    result?.mime ||
-                    "application/pdf";
+                    // Optimistically remove from UI
+                    setDocuments((prev) =>
+                      prev.filter((d) => d.fileId !== fileId)
+                    );
 
-                  // Check for presigned S3 URL first (new expected format: file.url)
-                  const downloadUrl =
-                    result?.file?.url ||
-                    result?.file_metadata?.download_url ||
-                    result?.file_metadata?.s3_url ||
-                    result?.file_metadata?.presigned_url ||
-                    result?.download_url ||
-                    result?.s3_url ||
-                    result?.presigned_url;
-
-                  if (downloadUrl) {
-                    // Use the presigned S3 URL directly
-                    console.log("📥 Using presigned S3 URL:", downloadUrl);
-
-                    // Check expiration if available
-                    const expiresAt = result?.file?.expires_at;
-                    if (expiresAt) {
-                      const expirationTime = parseInt(String(expiresAt));
-                      const currentTime = Date.now();
-                      if (currentTime >= expirationTime) {
-                        toast.error("Download link expired", {
-                          id: toastId,
-                          description:
-                            "The download link has expired. Please try again.",
-                          duration: 4000,
-                        });
-                        return;
-                      }
-                      console.log(
-                        "✅ URL valid until:",
-                        new Date(expirationTime).toLocaleString()
-                      );
-                    }
-
-                    // Open PDF in modal dialog with iframe
-                    setPdfUrl(downloadUrl);
-                    setPdfFileName(fileName);
-                    setPdfViewerOpen(true);
-
-                    toast.success("File loaded", {
+                    toast.success("Document deleted", {
                       id: toastId,
-                      description: `Opening ${fileName} in viewer`,
-                      duration: 2000,
+                      description: fileName,
+                      duration: 3000,
                     });
-                  } else if (result?.file?.data || result?.data) {
-                    // Fallback: Use raw file data if URL not available
-                    console.log("⚠️ No URL found, using raw data as fallback");
-                    const fileData = result?.file?.data || result?.data;
-                    await handleFileDownload(fileData, fileName, fileType);
-                  } else {
-                    toast.error("No file URL or data found", {
-                      id: toastId,
-                      description:
-                        "The response does not contain a file URL or file data",
-                      duration: 4000,
-                    });
-                  }
-                } catch (e: any) {
-                  console.error("❌ DocumentsContent: getDocumentById error", e);
-
-                  // Check if it's a 400 status code
-                  if (e?.status === 400) {
-                    toast.error("Bad Request", {
+                  } catch (e: any) {
+                    toast.error("Failed to delete document", {
                       id: toastId,
                       description:
                         e?.message ||
-                        "Invalid request. Please check the file ID and try again.",
-                      duration: 5000,
+                        "An error occurred while deleting the file",
+                      duration: 4000,
                     });
-                    // Don't open anything for 400 errors
-                    return;
                   }
+                }}
+                onFileClick={async (fileId) => {
+                  console.log(
+                    "🟢 DocumentsContent: onFileClick handler called",
+                    {
+                      fileId,
+                    }
+                  );
 
-                  // Handle other errors
-                  toast.error("Failed to retrieve file", {
-                    id: toastId,
-                    description:
-                      e instanceof Error
-                        ? e.message
-                        : "An error occurred while fetching the document",
-                    duration: 4000,
-                  });
-                }
-              }}
+                  // Show loading toast with progress bar
+                  const toastId = toast.loading(
+                    "Requesting file from secure server...",
+                    {
+                      description: (
+                        <div className="space-y-2 mt-1">
+                          <p className="text-sm text-gray-600">
+                            Fetching document securely from server
+                          </p>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full animate-progress" />
+                          </div>
+                        </div>
+                      ),
+                      duration: Infinity, // Keep open until we dismiss it
+                    }
+                  );
+
+                  try {
+                    // Call secured Xano document details API when filename is clicked
+                    console.log(
+                      "🟡 DocumentsContent: Calling getDocumentById..."
+                    );
+                    const result = await getDocumentById(fileId);
+                    console.log(
+                      "✅ DocumentsContent: getDocumentById success",
+                      result
+                    );
+
+                    // Update toast to success
+                    toast.success("File retrieved successfully", {
+                      id: toastId,
+                      description: "Preparing download...",
+                      duration: 2000,
+                    });
+
+                    // Extract file name from file_metadata (as per user requirements)
+                    const fileName =
+                      result?.file_metadata?.file_name ||
+                      result?.file?.name ||
+                      result?.name ||
+                      `document-${fileId}.pdf`;
+
+                    // Extract file type/mime
+                    const fileType =
+                      result?.file_metadata?.file_mime ||
+                      result?.file_metadata?.file_type ||
+                      result?.file?.mime ||
+                      result?.mime ||
+                      "application/pdf";
+
+                    // Check for presigned S3 URL first (new expected format: file.url)
+                    const downloadUrl =
+                      result?.file?.url ||
+                      result?.file_metadata?.download_url ||
+                      result?.file_metadata?.s3_url ||
+                      result?.file_metadata?.presigned_url ||
+                      result?.download_url ||
+                      result?.s3_url ||
+                      result?.presigned_url;
+
+                    if (downloadUrl) {
+                      // Use the presigned S3 URL directly
+                      console.log("📥 Using presigned S3 URL:", downloadUrl);
+
+                      // Check expiration if available
+                      const expiresAt = result?.file?.expires_at;
+                      if (expiresAt) {
+                        const expirationTime = parseInt(String(expiresAt));
+                        const currentTime = Date.now();
+                        if (currentTime >= expirationTime) {
+                          toast.error("Download link expired", {
+                            id: toastId,
+                            description:
+                              "The download link has expired. Please try again.",
+                            duration: 4000,
+                          });
+                          return;
+                        }
+                        console.log(
+                          "✅ URL valid until:",
+                          new Date(expirationTime).toLocaleString()
+                        );
+                      }
+
+                      // Open PDF in modal dialog with iframe
+                      setPdfUrl(downloadUrl);
+                      setPdfFileName(fileName);
+                      setPdfViewerOpen(true);
+
+                      toast.success("File loaded", {
+                        id: toastId,
+                        description: `Opening ${fileName} in viewer`,
+                        duration: 2000,
+                      });
+                    } else if (result?.file?.data || result?.data) {
+                      // Fallback: Use raw file data if URL not available
+                      console.log(
+                        "⚠️ No URL found, using raw data as fallback"
+                      );
+                      const fileData = result?.file?.data || result?.data;
+                      await handleFileDownload(fileData, fileName, fileType);
+                    } else {
+                      toast.error("No file URL or data found", {
+                        id: toastId,
+                        description:
+                          "The response does not contain a file URL or file data",
+                        duration: 4000,
+                      });
+                    }
+                  } catch (e: any) {
+                    console.error(
+                      "❌ DocumentsContent: getDocumentById error",
+                      e
+                    );
+
+                    // Check if it's a 400 status code
+                    if (e?.status === 400) {
+                      toast.error("Bad Request", {
+                        id: toastId,
+                        description:
+                          e?.message ||
+                          "Invalid request. Please check the file ID and try again.",
+                        duration: 5000,
+                      });
+                      // Don't open anything for 400 errors
+                      return;
+                    }
+
+                    // Handle other errors
+                    toast.error("Failed to retrieve file", {
+                      id: toastId,
+                      description:
+                        e instanceof Error
+                          ? e.message
+                          : "An error occurred while fetching the document",
+                      duration: 4000,
+                    });
+                  }
+                }}
               />
             </div>
             {/* Pagination Controls */}
-            {paginationData.pageTotal && paginationData.pageTotal > 0 && paginationData.itemsTotal && paginationData.itemsTotal > 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between px-6 py-4">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-700">Items per page:</span>
-                    <Select
-                      value={String(perPage)}
-                      onValueChange={(value) => {
-                        setPerPage(Number(value));
-                        setCurrentPage(1); // Reset to first page
-                      }}
-                    >
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-500">
-                      Showing {documents.length} of{" "}
-                      {paginationData.itemsTotal || 0} documents
-                    </span>
+            {paginationData.pageTotal &&
+              paginationData.pageTotal > 0 &&
+              paginationData.itemsTotal &&
+              paginationData.itemsTotal > 0 && (
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-700">
+                        Items per page:
+                      </span>
+                      <Select
+                        value={String(perPage)}
+                        onValueChange={(value) => {
+                          setPerPage(Number(value));
+                          setCurrentPage(1); // Reset to first page
+                        }}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-gray-500">
+                        Showing {documents.length} of{" "}
+                        {paginationData.itemsTotal || 0} documents
+                      </span>
+                    </div>
+                    <TablePagination
+                      currentPage={paginationData.curPage || currentPage}
+                      totalPages={paginationData.pageTotal || 1}
+                      onPageChange={(page) => setCurrentPage(page)}
+                    />
                   </div>
-                  <TablePagination
-                    currentPage={paginationData.curPage || currentPage}
-                    totalPages={paginationData.pageTotal || 1}
-                    onPageChange={(page) => setCurrentPage(page)}
-                  />
                 </div>
-              </div>
-            )}
+              )}
           </>
-        )
-      )}
+        ))}
 
       {/* PDF Viewer Modal */}
       <Dialog open={pdfViewerOpen} onOpenChange={setPdfViewerOpen}>

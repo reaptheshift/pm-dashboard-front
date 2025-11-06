@@ -161,94 +161,109 @@ export function UploadDocumentModalOptimized({
     const projectName = projects.find((p) => p.id === projectIdNum)?.name;
 
     try {
-      // Upload files in parallel batches
-      // API can handle 100 calls/minute, so we can upload up to 50 files concurrently
-      const BATCH_SIZE = 50;
-      const totalFiles = initialUploadItems.length;
+      // Worker pool pattern: Upload files concurrently with a concurrency limit
+      // API can handle 100 calls/minute, browser can handle ~30-50 concurrent connections
+      // Using 30 concurrent uploads maximizes throughput while respecting limits
+      const CONCURRENT_LIMIT = 30;
 
-      // Process files in batches of 50
-      for (
-        let batchStart = 0;
-        batchStart < totalFiles;
-        batchStart += BATCH_SIZE
-      ) {
-        const batchEnd = Math.min(batchStart + BATCH_SIZE, totalFiles);
-        const batch = initialUploadItems.slice(batchStart, batchEnd);
+      // Create a queue of files to upload with their indices
+      const queue = [
+        ...initialUploadItems.map((item, index) => ({ item, index })),
+      ];
+      let queueIndex = 0;
+      let activeWorkers = 0;
+      let resolveAll: (() => void) | null = null;
+      const allCompletePromise = new Promise<void>((resolve) => {
+        resolveAll = resolve;
+      });
 
-        // Update all files in batch to uploading status
+      // Function to process a single upload and start next worker if available
+      const processUpload = async (queueItem: {
+        item: any;
+        index: number;
+      }): Promise<void> => {
+        const { item, index } = queueItem;
+
+        // Mark as uploading
         setUploadingFiles((prev) => {
           const updated = [...prev];
-          for (let i = batchStart; i < batchEnd; i++) {
-            updated[i] = { ...updated[i], progress: 10, status: "uploading" };
-          }
+          updated[index] = {
+            ...updated[index],
+            progress: 10,
+            status: "uploading",
+          };
           return updated;
         });
 
-        // Upload all files in this batch in parallel (up to 50 at once)
-        const uploadPromises = batch.map(async (item, batchIndex) => {
-          const globalIndex = batchStart + batchIndex;
-          try {
-            // Upload file to Xano
-            const result = await uploadFileToXano(item.file, selectedProject);
+        try {
+          // Upload file to Xano
+          const result = await uploadFileToXano(item.file, selectedProject);
 
-            // Collect successful upload info
-            const uploadInfo: UploadedFileInfo = {
+          // Collect successful upload info
+          const uploadInfo: UploadedFileInfo = {
+            fileId: result.fileId,
+            fileName: result.fileName,
+            fileSize: item.file.size,
+            fileType: item.file.type || "application/octet-stream",
+            projectId: projectIdNum,
+            projectName,
+          };
+
+          // Update with file ID - Xano handles processing externally
+          setUploadingFiles((prev) => {
+            const updated = [...prev];
+            updated[index] = {
+              ...updated[index],
               fileId: result.fileId,
-              fileName: result.fileName,
-              fileSize: item.file.size,
-              fileType: item.file.type || "application/octet-stream",
-              projectId: projectIdNum,
-              projectName,
+              progress: 100,
+              status: "uploaded" as const,
             };
+            return updated;
+          });
 
-            // Update with file ID - Xano handles processing externally
-            setUploadingFiles((prev) => {
-              const updated = [...prev];
-              updated[globalIndex] = {
-                ...updated[globalIndex],
-                fileId: result.fileId,
-                progress: 100,
-                status: "uploaded" as const,
-              };
-              return updated;
-            });
+          uploadedFiles.push(uploadInfo);
+        } catch (uploadError) {
+          console.error("Upload error:", uploadError);
+          setUploadingFiles((prev) => {
+            const updated = [...prev];
+            updated[index] = {
+              ...updated[index],
+              status: "error" as const,
+            };
+            return updated;
+          });
+        } finally {
+          activeWorkers--;
 
-            return { success: true, data: uploadInfo, index: globalIndex };
-          } catch (uploadError) {
-            console.error("Upload error:", uploadError);
-            setUploadingFiles((prev) => {
-              const updated = [...prev];
-              updated[globalIndex] = {
-                ...updated[globalIndex],
-                status: "error" as const,
-              };
-              return updated;
-            });
-            return { success: false, error: uploadError, index: globalIndex };
+          // If there are more files in the queue, start the next one
+          if (queueIndex < queue.length) {
+            const nextItem = queue[queueIndex++];
+            if (nextItem) {
+              activeWorkers++;
+              processUpload(nextItem).catch(() => {
+                // Error already handled in processUpload
+              });
+            }
           }
-        });
 
-        // Wait for all uploads in this batch to complete (up to 50 files in parallel)
-        const batchResults = await Promise.allSettled(uploadPromises);
-
-        // Collect successful uploads
-        batchResults.forEach((result) => {
-          if (
-            result.status === "fulfilled" &&
-            result.value.success &&
-            result.value.data
-          ) {
-            uploadedFiles.push(result.value.data);
+          // If queue is empty and no active workers, we're done
+          if (queueIndex >= queue.length && activeWorkers === 0 && resolveAll) {
+            resolveAll();
           }
-        });
-
-        // Small delay between batches to respect rate limits
-        // 100 calls/minute capacity, processing 50 files per batch = 2 batches per minute max
-        // Adding 100ms delay between batches for safety
-        if (batchEnd < totalFiles) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
         }
-      }
+      };
+
+      // Start initial workers up to the concurrency limit
+      const initialBatch = queue.splice(0, CONCURRENT_LIMIT);
+      initialBatch.forEach((queueItem) => {
+        activeWorkers++;
+        processUpload(queueItem).catch(() => {
+          // Error already handled in processUpload
+        });
+      });
+
+      // Wait for all workers to complete
+      await allCompletePromise;
 
       // Close modal after all uploads complete
       setTimeout(() => {
