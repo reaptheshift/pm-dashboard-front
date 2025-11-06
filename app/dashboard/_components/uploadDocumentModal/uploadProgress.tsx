@@ -90,16 +90,16 @@ export function UploadProgress({
                 </p>
               </div>
 
-              {/* Progress Bar - Color Changing Animation */}
+              {/* Progress Bar - Shimmer Effect */}
               <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                 {item.status === "uploading" ? (
                   <div
-                    className="h-2 rounded-full animate-pulse"
+                    className="h-2 rounded-full"
                     style={{
                       width: "100%",
-                      background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 25%, #ec4899 50%, #f59e0b 75%, #3b82f6 100%)",
+                      backgroundImage: "linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)",
                       backgroundSize: "200% 100%",
-                      animation: "shimmer 2s linear infinite",
+                      animation: "shimmer 1.5s linear infinite",
                     }}
                   />
                 ) : item.status === "completed" ? (
@@ -108,20 +108,20 @@ export function UploadProgress({
                   <div className="h-2 rounded-full bg-red-500 w-full" />
                 ) : item.status === "processing" ? (
                   <div
-                    className="h-2 rounded-full animate-pulse"
+                    className="h-2 rounded-full"
                     style={{
                       width: "100%",
-                      background: "linear-gradient(90deg, #eab308 0%, #f59e0b 50%, #eab308 100%)",
+                      backgroundImage: "linear-gradient(90deg, #fbbf24 0%, #fcd34d 50%, #fbbf24 100%)",
                       backgroundSize: "200% 100%",
                       animation: "shimmer 1.5s linear infinite",
                     }}
                   />
                 ) : item.status === "uploaded" ? (
                   <div
-                    className="h-2 rounded-full animate-pulse"
+                    className="h-2 rounded-full"
                     style={{
                       width: "100%",
-                      background: "linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #10b981 100%)",
+                      backgroundImage: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #3b82f6 100%)",
                       backgroundSize: "200% 100%",
                       animation: "shimmer 1.5s linear infinite",
                     }}

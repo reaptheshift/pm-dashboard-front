@@ -29,6 +29,7 @@ import { X } from "lucide-react";
 import { uploadFileToXano } from "./uploadToXano";
 import { getProjects, type Project } from "@/app/dashboard/_projects/_actions";
 import type { UploadedFileInfo } from "./types";
+import { cn } from "@/lib/utils";
 
 interface UploadDocumentModalProps {
   open: boolean;
@@ -87,6 +88,23 @@ export function UploadDocumentModalOptimized({
     removeUploadingFile,
     flattenFolderStructure,
   } = useFileManager();
+
+  // Prevent page navigation during upload
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isUploading) {
+        e.preventDefault();
+        e.returnValue =
+          "Upload is in progress. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isUploading]);
 
   const handleFilesSelected = (files: File[]) => {
     // Always add to accumulated files for multiple selection
@@ -303,11 +321,33 @@ export function UploadDocumentModalOptimized({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  // Prevent modal from closing during upload
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && isUploading) {
+      // Don't allow closing during upload
+      return;
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-[512px] max-h-[80vh] p-0 gap-0 flex flex-col"
+        className={cn(
+          "sm:max-w-[512px] max-h-[80vh] p-0 gap-0 flex flex-col",
+          isUploading && "[&>button]:hidden"
+        )}
         aria-describedby="upload-modal-description"
+        onEscapeKeyDown={(e) => {
+          if (isUploading) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          if (isUploading) {
+            e.preventDefault();
+          }
+        }}
       >
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-0">
@@ -319,6 +359,11 @@ export function UploadDocumentModalOptimized({
               Upload documents to your project. Send and invitation to a new
               user to join your organization.
             </p>
+            {isUploading && (
+              <p className="text-xs text-orange-600 font-medium mt-2">
+                ⚠️ Upload in progress. Please wait...
+              </p>
+            )}
           </div>
         </DialogHeader>
 
@@ -475,7 +520,11 @@ export function UploadDocumentModalOptimized({
           <div className="flex justify-end space-x-3">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                if (!isUploading) {
+                  onOpenChange(false);
+                }
+              }}
               disabled={isUploading}
               className="px-5 py-2.5"
             >
