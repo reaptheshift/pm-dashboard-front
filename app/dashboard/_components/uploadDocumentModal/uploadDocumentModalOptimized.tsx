@@ -164,6 +164,9 @@ export function UploadDocumentModalOptimized({
       // Worker pool pattern: Upload files concurrently with a concurrency limit
       // Limit to 10 concurrent uploads to avoid rate limiting and browser connection issues
       const CONCURRENT_LIMIT = 10;
+      // Add delay between starting new uploads to prevent API overload
+      // 100ms delay = max 10 uploads per second, well within API limits
+      const DELAY_BETWEEN_UPLOADS_MS = 100;
 
       // Create a queue of files to upload with their indices
       // Don't mutate the queue - use an index to track position
@@ -258,6 +261,10 @@ export function UploadDocumentModalOptimized({
             const nextItem = queue[queueIndex];
             queueIndex++; // Increment before starting to avoid race condition
             if (nextItem) {
+              // Add delay before starting next upload to prevent API overload
+              await new Promise((resolve) =>
+                setTimeout(resolve, DELAY_BETWEEN_UPLOADS_MS)
+              );
               activeWorkers++;
               processUpload(nextItem).catch((err) => {
                 // Error already handled in processUpload, but log for debugging
@@ -272,10 +279,16 @@ export function UploadDocumentModalOptimized({
       };
 
       // Start initial workers up to the concurrency limit
-      // Don't splice - just start the first CONCURRENT_LIMIT items
+      // Add staggered delays to prevent simultaneous burst
       const startIndex = queueIndex;
       queueIndex = Math.min(CONCURRENT_LIMIT, queue.length);
       for (let i = startIndex; i < queueIndex; i++) {
+        // Stagger initial uploads with delays to prevent API overload
+        if (i > startIndex) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, DELAY_BETWEEN_UPLOADS_MS)
+          );
+        }
         activeWorkers++;
         processUpload(queue[i]).catch((err) => {
           // Error already handled in processUpload, but log for debugging
