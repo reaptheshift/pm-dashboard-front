@@ -94,9 +94,10 @@ export function DocumentsContent() {
         }
         setError(null);
         
-        // Parse sort parameter
+        // Parse sort parameter - only send if a valid sort option is selected
         let sortParam: { sortBy: string; order: "asc" | "desc" }[] | undefined;
-        if (debouncedSortBy) {
+        if (debouncedSortBy && debouncedSortBy !== "date-desc") {
+          // Only send sort if it's not the default "date-desc"
           const [field, order] = debouncedSortBy.split('-');
           let sortByField = '';
           if (field === 'date') {
@@ -107,7 +108,8 @@ export function DocumentsContent() {
             sortByField = 'size';
           }
           
-          if (sortByField) {
+          // Only create sort param if we have a valid field and order
+          if (sortByField && (order === 'asc' || order === 'desc')) {
             sortParam = [{ sortBy: sortByField, order: order as "asc" | "desc" }];
           }
         }
@@ -191,30 +193,54 @@ export function DocumentsContent() {
     loadDocuments();
   };
 
-  // Handle upload completion - add files to table without full reload
-  const handleUploadComplete = (uploadedFiles?: UploadedFileInfo[]) => {
+  // Handle upload completion - refresh documents list to show uploaded files
+  const handleUploadComplete = async (uploadedFiles?: UploadedFileInfo[]) => {
     if (!uploadedFiles || uploadedFiles.length === 0) {
+      // Even if no files, refresh to get latest state
+      await loadDocuments(false, true);
       return;
     }
 
-    // Convert uploaded files to Document format and add to state
-    const newDocuments: Document[] = uploadedFiles.map((uploaded) => ({
-      fileId: uploaded.fileId,
-      fileName: uploaded.fileName,
-      fileType: uploaded.fileType,
-      fileSize: uploaded.fileSize,
-      uploadTimestamp: new Date().toISOString(),
-      processingStatus: "PROCESSING" as const,
-      projectName: uploaded.projectName,
-      projectId: uploaded.projectId,
-    }));
-
-    // Add new documents to the existing list (avoid duplicates)
+    // Reset to first page and clear filters to ensure new files are visible
+    setCurrentPage(1);
+    setSearchQuery("");
+    setStatusFilter("all");
+    
+    // Optimistically add uploaded files immediately
     setDocuments((prev) => {
       const existingIds = new Set(prev.map((d) => d.fileId));
-      const uniqueNew = newDocuments.filter((d) => !existingIds.has(d.fileId));
-      return [...prev, ...uniqueNew];
+      const missingFiles = uploadedFiles.filter((uploaded) => !existingIds.has(uploaded.fileId));
+      
+      if (missingFiles.length > 0) {
+        // Convert uploaded files to Document format and add to state
+        const newDocuments: Document[] = missingFiles.map((uploaded) => ({
+          fileId: uploaded.fileId,
+          fileName: uploaded.fileName,
+          fileType: uploaded.fileType,
+          fileSize: uploaded.fileSize,
+          uploadTimestamp: new Date().toISOString(),
+          processingStatus: "PROCESSING" as const,
+          projectName: uploaded.projectName,
+          projectId: uploaded.projectId,
+        }));
+        
+        // Update pagination totals optimistically
+        setPaginationData((prev) => ({
+          ...prev,
+          itemsTotal: (prev.itemsTotal || 0) + missingFiles.length,
+          totalProcessing: (prev.totalProcessing || 0) + missingFiles.length,
+        }));
+        
+        return [...prev, ...newDocuments];
+      }
+      
+      return prev;
     });
+    
+    // Refresh documents list after delay to get accurate totals from API
+    setTimeout(async () => {
+      await loadDocuments(false, true);
+    }, 2000);
   };
 
   // Handle file download - either from URL or raw data

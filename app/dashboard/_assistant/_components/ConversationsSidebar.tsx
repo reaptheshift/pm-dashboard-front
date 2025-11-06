@@ -50,8 +50,13 @@ export function ConversationsSidebar({
 			{/* Conversations List */}
 			<div className="flex-1 overflow-y-auto">
 				{isLoading ? (
-					<div className="p-4 text-center text-sm text-gray-500">
-						Loading conversations...
+					<div className="p-4 text-center">
+						<div className="flex flex-col items-center gap-2">
+							<div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+							<p className="text-sm text-gray-500">
+								Loading conversations...
+							</p>
+						</div>
 					</div>
 				) : conversations.length === 0 ? (
 					<div className="p-4 text-center">

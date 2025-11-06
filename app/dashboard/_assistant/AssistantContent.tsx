@@ -114,17 +114,22 @@ export function AssistantContent() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Load conversations whenever selected project changes
+  // Load conversations only when project is selected (not on initial mount)
   React.useEffect(() => {
+    // Don't load if no project is selected - keep loading state until project is selected
+    if (!selectedProjectId) {
+      setConversations([]);
+      setIsLoadingConversations(true); // Keep loading state
+      return;
+    }
+
     const loadConversations = async () => {
       try {
         setIsLoadingConversations(true);
-        const data = await getConversations(
-          selectedProjectId ? Number(selectedProjectId) : undefined
-        );
+        const data = await getConversations(Number(selectedProjectId));
         setConversations(data);
       } catch (error: any) {
-        console.error("Failed to load conversations:", error);
+        setConversations([]);
         // Don't show toast for this as it's a background operation
       } finally {
         setIsLoadingConversations(false);
@@ -134,7 +139,7 @@ export function AssistantContent() {
     loadConversations();
   }, [selectedProjectId]);
 
-  // Load projects on mount
+  // Load projects on mount and auto-select first project
   React.useEffect(() => {
     const loadProjects = async () => {
       try {
@@ -142,12 +147,11 @@ export function AssistantContent() {
         const fetchedProjects = await getProjects();
         setProjects(fetchedProjects);
 
-        // Always auto-select the first project if available
+        // Auto-select first project if available (triggers conversations load)
         if (fetchedProjects.length > 0) {
           setSelectedProjectId(String(fetchedProjects[0].id));
         }
       } catch (error: any) {
-        console.error("Failed to load projects:", error);
         toast.error("Failed to load projects", {
           description: "Projects could not be loaded",
         });
@@ -175,7 +179,6 @@ export function AssistantContent() {
         );
         setDocuments(filteredDocs);
       } catch (error: any) {
-        console.error("Failed to load documents:", error);
         toast.error("Failed to load documents", {
           description: "Documents could not be loaded",
         });

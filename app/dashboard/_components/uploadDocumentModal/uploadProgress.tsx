@@ -6,6 +6,25 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { getFileTypeIcon, formatFileSize } from "./utils";
 
+// Add CSS animation for shimmer effect
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+  `;
+  if (!document.head.querySelector('style[data-shimmer]')) {
+    style.setAttribute("data-shimmer", "true");
+    document.head.appendChild(style);
+  }
+}
+
 interface FileUploadItem {
   file: File;
   progress: number;
@@ -71,20 +90,45 @@ export function UploadProgress({
                 </p>
               </div>
 
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    item.status === "completed"
-                      ? "bg-green-500"
-                      : item.status === "error"
-                      ? "bg-red-500"
-                      : item.status === "processing"
-                      ? "bg-yellow-500"
-                      : "bg-blue-500"
-                  }`}
-                  style={{ width: `${item.progress}%` }}
-                />
+              {/* Progress Bar - Color Changing Animation */}
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                {item.status === "uploading" ? (
+                  <div
+                    className="h-2 rounded-full animate-pulse"
+                    style={{
+                      width: "100%",
+                      background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 25%, #ec4899 50%, #f59e0b 75%, #3b82f6 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 2s linear infinite",
+                    }}
+                  />
+                ) : item.status === "completed" ? (
+                  <div className="h-2 rounded-full bg-green-500 w-full" />
+                ) : item.status === "error" ? (
+                  <div className="h-2 rounded-full bg-red-500 w-full" />
+                ) : item.status === "processing" ? (
+                  <div
+                    className="h-2 rounded-full animate-pulse"
+                    style={{
+                      width: "100%",
+                      background: "linear-gradient(90deg, #eab308 0%, #f59e0b 50%, #eab308 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s linear infinite",
+                    }}
+                  />
+                ) : item.status === "uploaded" ? (
+                  <div
+                    className="h-2 rounded-full animate-pulse"
+                    style={{
+                      width: "100%",
+                      background: "linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #10b981 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s linear infinite",
+                    }}
+                  />
+                ) : (
+                  <div className="h-2 rounded-full bg-gray-300 w-full" />
+                )}
               </div>
               <p className="text-xs text-gray-500">
                 {item.status === "completed"
@@ -95,7 +139,9 @@ export function UploadProgress({
                   ? "📤 File uploaded, starting processing..."
                   : item.status === "error"
                   ? "❌ Upload failed"
-                  : `📤 ${item.progress}% uploaded`}
+                  : item.status === "uploading"
+                  ? "📤 Uploading..."
+                  : "⏳ Waiting..."}
               </p>
             </div>
 
