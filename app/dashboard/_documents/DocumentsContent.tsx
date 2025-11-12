@@ -15,6 +15,7 @@ import { DataTable } from "./_components/dataTable";
 import { UploadDocumentModalWrapper } from "./_components/uploadDocumentModalWrapper";
 import { DocumentsSkeleton } from "./_components/DocumentsSkeleton";
 import { TablePagination } from "./_components/tablePagination";
+import { getFileTypeFromExtension } from "@/lib/file-utils";
 import {
   getDocuments,
   getDocumentById,
@@ -350,42 +351,6 @@ export function DocumentsContent() {
 
   // Convert backend documents to table format
   const tableData = (documents || []).map((doc) => {
-    // Map file type to valid FileType
-    const getFileType = (
-      fileType: string | undefined,
-      fileName: string
-    ): "DOC" | "PDF" | "CSV" | "PPTX" | "XLS" => {
-      const type = fileType?.toLowerCase() || "";
-      const name = fileName?.toLowerCase() || "";
-
-      if (type.includes("pdf") || name.endsWith(".pdf")) return "PDF";
-      if (
-        type.includes("doc") ||
-        type.includes("docx") ||
-        name.endsWith(".doc") ||
-        name.endsWith(".docx")
-      )
-        return "DOC";
-      if (
-        type.includes("csv") ||
-        type.includes("xlsx") ||
-        type.includes("xls") ||
-        name.endsWith(".csv") ||
-        name.endsWith(".xlsx") ||
-        name.endsWith(".xls")
-      )
-        return "XLS";
-      if (
-        type.includes("ppt") ||
-        type.includes("pptx") ||
-        name.endsWith(".ppt") ||
-        name.endsWith(".pptx")
-      )
-        return "PPTX";
-      if (name.endsWith(".dwg") || name.endsWith(".dxf")) return "DOC"; // DWG/DXF files as DOC type
-      return "DOC"; // Default fallback
-    };
-
     return {
       id: doc.fileId,
       fileName: doc.fileName,
@@ -397,7 +362,7 @@ export function DocumentsContent() {
           : doc.processingStatus === "FAILED"
           ? "Deadline Passed"
           : "Accepting Bids",
-      fileType: getFileType(doc.fileType, doc.fileName),
+      fileType: getFileTypeFromExtension(doc.fileName),
       size: formatFileSize(doc.fileSize),
       uploaded: formatDateTime(doc.uploadTimestamp),
       projectName: doc.projectName,

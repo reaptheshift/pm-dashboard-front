@@ -55,61 +55,25 @@ export async function uploadFileToXano(
       );
     }
 
-    // Get response text first to check if it's empty or non-JSON
-    const responseText = await response.text();
+    let fileId: string = file.name;
+    let fileName: string = file.name;
 
-    if (!responseText || responseText.trim() === "") {
-      throw new Error("Upload succeeded but response body is empty");
-    }
-
-    let result: any;
     try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse Xano response as JSON:", responseText);
-      throw new Error(
-        `Invalid JSON response from server: ${responseText.substring(0, 200)}`
-      );
-    }
+      const responseText = await response.text();
+      if (responseText && responseText.trim() !== "") {
+        const result = JSON.parse(responseText);
 
-    // Log full response for debugging
-    console.log("Xano upload response:", result);
-
-    // Xano response structure:
-    // {
-    //   file_uuid: "48630f67-8e73-4f19-97a1-dd7397a26fd8",
-    //   ec_api_resp: {
-    //     response: {
-    //       result: { fileId, fileName, status, message, success }
-    //     }
-    //   }
-    // }
-    const responseData =
-      result.ec_api_resp?.response?.result || result.result || result;
-
-    // Extract fileId - prefer file_uuid at top level, then check nested structures
-    const fileId =
-      result.file_uuid ||
-      responseData?.fileId ||
-      responseData?.id ||
-      result?.fileId ||
-      result?.id;
-
-    const fileName =
-      responseData?.fileName ||
-      responseData?.name ||
-      result?.fileName ||
-      result?.name ||
-      file.name;
-
-    if (!fileId) {
-      console.error("Xano response missing file ID. Full response:", result);
-      console.error("Response data extracted:", responseData);
-      throw new Error(
-        `Upload succeeded but no file ID returned. Response: ${JSON.stringify(
-          result
-        )}`
-      );
+        // New Xano response structure:
+        // { id, name, mime, path, size, source, user_id, created_at, project_id, processing_status, ... }
+        if (result.id) {
+          fileId = result.id;
+        }
+        if (result.name) {
+          fileName = result.name;
+        }
+      }
+    } catch {
+      // If parsing fails, use file name as fallback
     }
 
     return {

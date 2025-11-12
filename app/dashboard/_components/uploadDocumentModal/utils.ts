@@ -1,16 +1,17 @@
+import { getFileTypeFromExtension, type FileType } from "@/lib/file-utils";
+
 export const getFileTypeIcon = (fileName: string) => {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  const iconMap: { [key: string]: { icon: string; alt: string } } = {
-    pdf: { icon: "/images/pdf-icon.svg", alt: "PDF" },
-    docx: { icon: "/images/docx-icon.svg", alt: "DOCX" },
-    doc: { icon: "/images/docx-icon.svg", alt: "DOC" },
-    csv: { icon: "/images/csv-icon.svg", alt: "CSV" },
-    xlsx: { icon: "/images/csv-icon.svg", alt: "XLSX" },
-    xls: { icon: "/images/csv-icon.svg", alt: "XLS" },
+  const fileType = getFileTypeFromExtension(fileName);
+  
+  const iconMap: Record<FileType, { icon: string; alt: string }> = {
+    PDF: { icon: "/images/pdf-icon.svg", alt: "PDF" },
+    DOC: { icon: "/images/docx-icon.svg", alt: "DOC" },
+    CSV: { icon: "/images/csv-icon.svg", alt: "CSV" },
+    XLS: { icon: "/images/csv-icon.svg", alt: "XLS" },
+    PPTX: { icon: "/images/docx-icon.svg", alt: "PPTX" },
   };
-  return (
-    iconMap[extension || ""] || { icon: "/images/docx-icon.svg", alt: "FILE" }
-  );
+  
+  return iconMap[fileType] || { icon: "/images/docx-icon.svg", alt: "FILE" };
 };
 
 export const formatFileSize = (bytes: number): string => {

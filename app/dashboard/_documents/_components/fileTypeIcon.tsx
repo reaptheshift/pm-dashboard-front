@@ -1,8 +1,10 @@
 import * as React from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { getFileTypeFromExtension, type FileType } from "@/lib/file-utils";
 
-export type FileType = "DOC" | "PDF" | "CSV" | "PPTX" | "XLS";
+export type { FileType };
+export { getFileTypeFromExtension };
 
 interface FileTypeIconProps {
   type: FileType;

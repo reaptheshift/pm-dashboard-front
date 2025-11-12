@@ -161,15 +161,7 @@ export function UploadDocumentModalOptimized({
     const projectName = projects.find((p) => p.id === projectIdNum)?.name;
 
     try {
-      // Worker pool pattern: Upload files concurrently with a concurrency limit
-      // Limit to 10 concurrent uploads to avoid rate limiting and browser connection issues
-      const CONCURRENT_LIMIT = 10;
-      // Add delay between starting new uploads to prevent API overload
-      // 100ms delay = max 10 uploads per second, well within API limits
-      const DELAY_BETWEEN_UPLOADS_MS = 100;
-
-      // Create a queue of files to upload with their indices
-      // Don't mutate the queue - use an index to track position
+      const CONCURRENT_LIMIT = 5;
       const queue = [
         ...initialUploadItems.map((item, index) => ({ item, index })),
       ];
@@ -182,7 +174,6 @@ export function UploadDocumentModalOptimized({
         resolveAll = resolve;
       });
 
-      // Function to check if all uploads are complete and resolve if so
       const checkCompletion = () => {
         if (
           completedCount === totalFiles &&
@@ -193,14 +184,12 @@ export function UploadDocumentModalOptimized({
         }
       };
 
-      // Function to process a single upload and start next worker if available
       const processUpload = async (queueItem: {
         item: any;
         index: number;
       }): Promise<void> => {
         const { item, index } = queueItem;
 
-        // Mark as uploading
         setUploadingFiles((prev) => {
           const updated = [...prev];
           updated[index] = {
@@ -212,10 +201,8 @@ export function UploadDocumentModalOptimized({
         });
 
         try {
-          // Upload file to Xano
           const result = await uploadFileToXano(item.file, selectedProject);
 
-          // Collect successful upload info
           const uploadInfo: UploadedFileInfo = {
             fileId: result.fileId,
             fileName: result.fileName,
@@ -225,7 +212,6 @@ export function UploadDocumentModalOptimized({
             projectName,
           };
 
-          // Update with file ID - Xano handles processing externally
           setUploadingFiles((prev) => {
             const updated = [...prev];
             updated[index] = {
@@ -255,55 +241,37 @@ export function UploadDocumentModalOptimized({
           completedCount++;
           activeWorkers--;
 
-          // If there are more files in the queue, start the next one
-          // Use queueIndex to track position in the original queue array
           if (queueIndex < queue.length) {
             const nextItem = queue[queueIndex];
-            queueIndex++; // Increment before starting to avoid race condition
+            queueIndex++;
             if (nextItem) {
-              // Add delay before starting next upload to prevent API overload
-              await new Promise((resolve) =>
-                setTimeout(resolve, DELAY_BETWEEN_UPLOADS_MS)
-              );
               activeWorkers++;
               processUpload(nextItem).catch((err) => {
-                // Error already handled in processUpload, but log for debugging
                 console.error("Worker processUpload error:", err);
               });
             }
           }
 
-          // Check if all uploads are complete
           checkCompletion();
         }
       };
 
-      // Start initial workers up to the concurrency limit
-      // Add staggered delays to prevent simultaneous burst
       const startIndex = queueIndex;
       queueIndex = Math.min(CONCURRENT_LIMIT, queue.length);
       for (let i = startIndex; i < queueIndex; i++) {
-        // Stagger initial uploads with delays to prevent API overload
-        if (i > startIndex) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, DELAY_BETWEEN_UPLOADS_MS)
-          );
-        }
         activeWorkers++;
         processUpload(queue[i]).catch((err) => {
-          // Error already handled in processUpload, but log for debugging
           console.error("Initial worker processUpload error:", err);
         });
       }
 
-      // Wait for all workers to complete
       await allCompletePromise;
 
-      // Close modal after all uploads complete
+      // Close modal after all uploads complete without reloading dashboard
       setTimeout(() => {
         setIsUploading(false);
         setUploadingFiles([]);
-        onOpenChange(false, uploadedFiles);
+        onOpenChange(false);
       }, 1000);
     } catch (error) {
       console.error("Upload process error:", error);

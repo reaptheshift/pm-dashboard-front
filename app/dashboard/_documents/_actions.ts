@@ -1,5 +1,7 @@
 "use server";
 
+import { getFileTypeFromExtension } from "@/lib/file-utils";
+
 export interface Document {
   fileId: string;
   fileName: string;
@@ -59,68 +61,9 @@ function transformXanoDocument(xanoDoc: XanoDocument): Document {
     ? new Date(xanoDoc.created_at).toISOString()
     : new Date().toISOString();
 
-  // Map file type - use 'type' field (pdf, image) and derive from content_type or extension
-  const rawType = (xanoDoc.type || "").toLowerCase();
-  const contentType = (xanoDoc.content_type || "").toLowerCase();
+  // Get file type from file extension
   const fileName = xanoDoc.original_name || xanoDoc.name || "";
-  const extension = fileName.split(".").pop()?.toUpperCase() || "";
-
-  let fileType = "";
-
-  // Direct type mapping (Xano returns lowercase: "pdf", "image")
-  if (rawType === "pdf") {
-    fileType = "PDF";
-  } else if (rawType === "image") {
-    // For images, check extension or content type
-    const imageExtensions = ["JPG", "JPEG", "PNG", "GIF", "WEBP"];
-    if (imageExtensions.includes(extension)) {
-      // Images not in supported icon types, use DOC as fallback or handle specially
-      // Since FileTypeIcon doesn't support images, we'll use DOC
-      fileType = "DOC";
-    } else {
-      fileType = "DOC"; // Default for unknown image types
-    }
-  } else {
-    // Derive from content_type
-    if (contentType.includes("pdf")) {
-      fileType = "PDF";
-    } else if (
-      contentType.includes("word") ||
-      contentType.includes("document") ||
-      contentType.includes("msword")
-    ) {
-      fileType = "DOC";
-    } else if (
-      contentType.includes("sheet") ||
-      contentType.includes("excel") ||
-      contentType.includes("spreadsheet")
-    ) {
-      fileType = "XLS";
-    } else if (
-      contentType.includes("csv") ||
-      contentType.includes("comma-separated")
-    ) {
-      fileType = "CSV";
-    } else if (
-      contentType.includes("presentation") ||
-      contentType.includes("powerpoint")
-    ) {
-      fileType = "PPTX";
-    } else {
-      // Fallback: derive from file extension
-      const extensionMap: Record<string, string> = {
-        PDF: "PDF",
-        DOC: "DOC",
-        DOCX: "DOC",
-        XLS: "XLS",
-        XLSX: "XLS",
-        CSV: "CSV",
-        PPT: "PPTX",
-        PPTX: "PPTX",
-      };
-      fileType = extensionMap[extension] || "DOC"; // Default to DOC if unknown
-    }
-  }
+  const fileType = getFileTypeFromExtension(fileName);
 
   return {
     fileId: xanoDoc.id,
