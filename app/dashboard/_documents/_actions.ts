@@ -26,7 +26,7 @@ interface XanoDocument {
   path: string;
   size: number;
   type: string;
-  content_type: string;
+  mime: string;
   processing_status: string;
   created_at: number;
   project_id?: number;
@@ -166,6 +166,20 @@ export async function getDocumentById(documentsId: string) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
+
+      // Check if error is related to content_type field (Xano backend issue)
+      if (
+        errorText.includes("content_type") ||
+        errorText.includes("content-type")
+      ) {
+        const error: any = new Error(
+          "API field mismatch: The backend is trying to access 'content_type' but the field is now 'mime'. Please update the Xano API configuration."
+        );
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.message = error.message;
+        throw error;
+      }
 
       // Create error object with status code for client-side handling
       const error: any = new Error(

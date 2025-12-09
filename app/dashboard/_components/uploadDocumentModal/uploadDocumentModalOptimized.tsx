@@ -161,7 +161,7 @@ export function UploadDocumentModalOptimized({
     const projectName = projects.find((p) => p.id === projectIdNum)?.name;
 
     try {
-      const CONCURRENT_LIMIT = 5;
+      const CONCURRENT_LIMIT = 10;
       const queue = [
         ...initialUploadItems.map((item, index) => ({ item, index })),
       ];

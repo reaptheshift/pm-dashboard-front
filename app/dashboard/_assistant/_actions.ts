@@ -28,7 +28,7 @@ export interface ReferencedDocument {
     path: string;
     size: number;
     type: string;
-    content_type: string;
+    mime: string;
     processing_status: string;
     created_at: number;
     project_id?: number;
