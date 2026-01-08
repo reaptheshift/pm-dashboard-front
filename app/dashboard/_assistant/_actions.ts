@@ -42,8 +42,16 @@ export interface ConversationMessage {
   refrenced_documents?: ReferencedDocument[];
   role: "user" | "assistant";
   index: number;
-  content: string;
+  // Content can be a string or an object
+  // User message format: {"question":"...","references":[...]}
+  // Assistant message format: {"answers":[...]}
+  content: string | { question?: string; references?: Array<{ document_id: string }> } | { answers?: AnswerPart[] };
   created_at: string | number;
+  // User message format: {"question":"...","references":[...]}
+  question?: string;
+  references?: Array<{ document_id: string }>;
+  // Assistant message format: {"answers":[...]}
+  answers?: AnswerPart[];
 }
 
 export interface ConversationWithMessages extends Conversation {
@@ -73,9 +81,22 @@ export interface SourceDocument {
   document_name: string;
 }
 
+export interface AnswerReference {
+  page: number;
+  chunk_id: string;
+  document_id: string;
+}
+
+export interface AnswerPart {
+  text: string;
+  answer_id: string;
+  references: AnswerReference[];
+}
+
 export interface LLMAnswer {
   sources?: SourceDocument[];
-  answer_markdown: string;
+  answer_markdown?: string;
+  answers?: AnswerPart[];
   id?: string;
   role?: "user" | "assistant";
   index?: number;
@@ -419,5 +440,55 @@ export async function continueConversation(
   } catch (error: any) {
     console.error("Error continuing conversation:", error);
     throw new Error(error.message || "Failed to continue conversation");
+  }
+}
+
+export interface ChunkData {
+  id: string;
+  document_id: string;
+  text: string;
+  markdown: string;
+  type: string;
+  annotated_chunk_image_path: string;
+  page: number;
+  created_at: number;
+}
+
+const CHUNK_API_URL =
+  "https://xtvj-bihp-mh8d.n7e.xano.io/api:O2ncQBcv/fw/chunks";
+
+export async function getChunkById(chunkId: string): Promise<ChunkData> {
+  const authToken = await getAuthToken();
+
+  if (!authToken) {
+    throw new Error("Authentication required");
+  }
+
+  try {
+    const response = await fetch(`${CHUNK_API_URL}/${chunkId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      cache: "no-cache",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Get chunk API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+
+      throw new Error(`Failed to get chunk: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("Error fetching chunk:", error);
+    throw new Error(error.message || "Failed to fetch chunk");
   }
 }
