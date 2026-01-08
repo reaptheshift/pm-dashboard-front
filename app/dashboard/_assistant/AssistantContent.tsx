@@ -699,15 +699,10 @@ export function AssistantContent() {
     setSelectedDocuments((prev) => prev.filter((id) => id !== documentId));
   };
 
-  // Load conversation when selected
-  const handleSelectConversation = React.useCallback(
-    async (conversationId: string) => {
-      try {
-        setIsLoading(true);
-        const conversation = await getConversation(conversationId);
-
-        if (conversation && conversation.messages) {
-          const formattedMessages: Message[] = conversation.messages.map(
+  // Helper function to format messages from API response
+  const formatMessages = React.useCallback((messages: any[]): Message[] => {
+    // Use messages exactly as they come from API (already in correct order)
+    return messages.map(
             (msg) => {
               // Extract referenced documents from API response
               const referencedDocs: ReferencedDocumentInfo[] | undefined =
@@ -826,8 +821,18 @@ export function AssistantContent() {
                     : undefined,
                 answerParts,
               };
-            }
-          );
+    });
+  }, []);
+
+  // Load conversation when selected
+  const handleSelectConversation = React.useCallback(
+    async (conversationId: string) => {
+      try {
+        setIsLoading(true);
+        const conversation = await getConversation(conversationId);
+
+        if (conversation && conversation.messages) {
+          const formattedMessages = formatMessages(conversation.messages);
           setMessages(formattedMessages);
           setCurrentConversationId(conversationId);
         }
@@ -839,7 +844,7 @@ export function AssistantContent() {
         setIsLoading(false);
       }
     },
-    []
+    [formatMessages]
   );
 
   const handleNewConversation = React.useCallback(() => {
@@ -946,13 +951,29 @@ export function AssistantContent() {
           answerParts,
         };
 
-        // Add message with animation - use setTimeout to trigger animation
-        setTimeout(() => {
-          setMessages((prev) => [...prev, assistantMessage]);
-        }, 100);
+        // Reload the conversation to ensure correct message order from API
+        if (startResponse.conversation_id) {
+          setCurrentConversationId(startResponse.conversation_id);
+          try {
+            const reloadedConversation = await getConversation(startResponse.conversation_id);
+            if (reloadedConversation && reloadedConversation.messages) {
+              const formattedMessages = formatMessages(reloadedConversation.messages);
+              setMessages(formattedMessages);
+            }
+          } catch (error) {
+            // Fallback to adding message directly if reload fails
+            setTimeout(() => {
+              setMessages((prev) => [...prev, assistantMessage]);
+            }, 100);
+          }
+        } else {
+          // Fallback if no conversation_id
+          setTimeout(() => {
+            setMessages((prev) => [...prev, assistantMessage]);
+          }, 100);
+        }
 
         // Refresh conversations list to include the new conversation with chat_title
-        // The conversation is already created on the backend with the chat_title
         try {
           const updatedConversations = await getConversations(
             selectedProjectId ? Number(selectedProjectId) : undefined
@@ -1011,10 +1032,26 @@ export function AssistantContent() {
           answerParts,
         };
 
-        // Add message with animation
-        setTimeout(() => {
-          setMessages((prev) => [...prev, assistantMessage]);
-        }, 100);
+        // Reload the conversation to ensure correct message order from API
+        if (currentConversationId) {
+          try {
+            const reloadedConversation = await getConversation(currentConversationId);
+            if (reloadedConversation && reloadedConversation.messages) {
+              const formattedMessages = formatMessages(reloadedConversation.messages);
+              setMessages(formattedMessages);
+            }
+          } catch (error) {
+            // Fallback to adding message directly if reload fails
+            setTimeout(() => {
+              setMessages((prev) => [...prev, assistantMessage]);
+            }, 100);
+          }
+        } else {
+          // Fallback if no conversation_id
+          setTimeout(() => {
+            setMessages((prev) => [...prev, assistantMessage]);
+          }, 100);
+        }
 
         // Refresh conversations list after sending a message
         try {

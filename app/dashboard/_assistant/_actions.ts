@@ -256,7 +256,10 @@ export async function getConversation(
   }
 
   try {
-    const response = await fetch(`${CONVERSATIONS_API_URL}/${conversationId}`, {
+    const url = `${CONVERSATIONS_API_URL}/${conversationId}`;
+    console.log("🔵 getConversation - Fetching URL:", url);
+    
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -287,18 +290,7 @@ export async function getConversation(
       data.messages = [];
     }
 
-    // Sort messages by index if available, otherwise by created_at
-    if (data.messages.length > 0) {
-      data.messages.sort((a: ConversationMessage, b: ConversationMessage) => {
-        if (a.index !== undefined && b.index !== undefined) {
-          return a.index - b.index;
-        }
-        return (
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-      });
-    }
-
+    // Return messages as-is from API (already in correct order)
     return data;
   } catch (error: any) {
     console.error("Error fetching conversation:", error);
