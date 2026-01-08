@@ -780,7 +780,7 @@ export function AssistantContent() {
                     // If parsing fails, check if answers is already in the message object
                     if (msg.answers && Array.isArray(msg.answers)) {
                       answerParts = msg.answers;
-                      content = msg.answers.map((part) => part.text).join(" ");
+                      content = msg.answers.map((part: AnswerPart) => part.text).join(" ");
                     } else {
                       content = msg.content; // Fallback to original string
                     }
@@ -791,13 +791,13 @@ export function AssistantContent() {
                   if (contentObj.answers && Array.isArray(contentObj.answers)) {
                     answerParts = contentObj.answers;
                     // Combine all answer parts into one content string
-                    content = contentObj.answers.map((part) => part.text).join(" ");
+                    content = contentObj.answers.map((part: AnswerPart) => part.text).join(" ");
                   }
                 } else {
                   // Check if answers is already in the message object
                   if (msg.answers && Array.isArray(msg.answers)) {
                     answerParts = msg.answers;
-                    content = msg.answers.map((part) => part.text).join(" ");
+                    content = msg.answers.map((part: AnswerPart) => part.text).join(" ");
                   } else {
                     content = String(msg.content);
                   }
@@ -928,7 +928,7 @@ export function AssistantContent() {
         if (startResponse.llm_answer.answers && Array.isArray(startResponse.llm_answer.answers)) {
           // Combine all answer parts into one content string
           answerParts = startResponse.llm_answer.answers;
-          content = answerParts.map((part) => part.text).join(" ");
+          content = answerParts.map((part: AnswerPart) => part.text).join(" ");
         } else {
           content =
             startResponse.llm_answer.answer_markdown ||
@@ -953,10 +953,10 @@ export function AssistantContent() {
         };
 
         // Reload the conversation to ensure correct message order from API
-        if (startResponse.conversation_id) {
-          setCurrentConversationId(startResponse.conversation_id);
+        if (startResponse.conversation?.id) {
+          setCurrentConversationId(startResponse.conversation.id);
           try {
-            const reloadedConversation = await getConversation(startResponse.conversation_id);
+            const reloadedConversation = await getConversation(startResponse.conversation.id);
             if (reloadedConversation && reloadedConversation.messages) {
               const formattedMessages = formatMessages(reloadedConversation.messages);
               setMessages(formattedMessages);
@@ -1009,7 +1009,7 @@ export function AssistantContent() {
         if (continueResponse.llm_answer.answers && Array.isArray(continueResponse.llm_answer.answers)) {
           // Combine all answer parts into one content string
           answerParts = continueResponse.llm_answer.answers;
-          content = answerParts.map((part) => part.text).join(" ");
+          content = answerParts.map((part: AnswerPart) => part.text).join(" ");
         } else {
           content =
             continueResponse.llm_answer.answer_markdown ||

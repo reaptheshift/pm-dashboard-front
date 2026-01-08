@@ -1,5 +1,5 @@
 import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
+import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,12 +10,6 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   // Ensure proper server-side rendering
   trailingSlash: false,
-  // Fix Turbopack root directory issue
-  experimental: {
-    turbo: {
-      root: resolve(__dirname),
-    },
-  },
   images: {
     remotePatterns: [
       {
