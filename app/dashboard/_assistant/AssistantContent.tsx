@@ -20,6 +20,7 @@ import {
   type Conversation,
   type AnswerPart,
   type ChunkData,
+  type ReferencedDocument,
 } from "./_actions";
 import { ConversationsSidebar } from "./_components/ConversationsSidebar";
 import { getProjects, type Project } from "../_projects/_actions";
@@ -706,7 +707,7 @@ export function AssistantContent() {
             (msg) => {
               // Extract referenced documents from API response
               const referencedDocs: ReferencedDocumentInfo[] | undefined =
-                msg.refrenced_documents?.map((refDoc) => ({
+                msg.refrenced_documents?.map((refDoc: ReferencedDocument) => ({
                   id: refDoc.documents.id,
                   name: refDoc.documents.name,
                   type: refDoc.documents.type || "doc",
